@@ -1,0 +1,110 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Aptos;}{\f1 Aptos Display;}}
+{\colortbl;\red31\green78\blue61;\red255\green255\blue255;\red230\green239\blue234;}
+\paperw12240\paperh15840\margl900\margr900\margt900\margb900
+\widowctrl
+\pard\qc\sa180\f1\fs32\b\cf1 4.1 Indikator Remote Sensing untuk Estimasi Soil Properties\b0\par
+\pard\sa120\sl260\slmult1\f0\fs20\cf0
+Pantulan spektral permukaan tanah pada rentang cahaya tampak (visible, VIS: 0,4-0,7 \u181?m), inframerah dekat (near infrared, NIR: 0,7-1,1 \u181?m), dan inframerah gelombang pendek (shortwave infrared, SWIR: 1,1-2,5 \u181?m) tidak bersifat acak. Polanya ditentukan oleh komposisi kimiawi dan susunan fisik partikel penyusun tanah (Ben-Dor et al., 2009; Mulder et al., 2011). Di dalam rentang VNIR-SWIR, kurva reflektansi tanah terutama dipengaruhi oleh transisi elektronik pada ion logam transisi—terutama besi pada panjang gelombang 0,4-1,0 \u181?m—serta nada atas (overtones) dan kombinasi getaran molekuler dari ikatan O-H, C-H, N-H, Al-OH, Mg-OH, dan CO3(2-) pada panjang gelombang 1,1-2,5 \u181?m (Viscarra Rossel & Behrens, 2010; Chabrillat et al., 2019). Komponen yang memiliki pita serapan aktif dalam rentang tersebut disebut kromofor tanah (soil chromophores), meliputi air, bahan organik tanah, mineral lempung, oksida besi, karbonat, dan garam mudah larut.\par
+\pard\sa100\sb120\f1\fs26\b\cf1 Mekanisme spektral utama\b0\par
+\pard\sa120\sl260\slmult1\f0\fs20\cf0
+Tekstur dan mineralogi lempung memengaruhi tingkat pantulan keseluruhan maupun lekuk serapan spesifik di wilayah SWIR. Tanah yang didominasi fraksi pasir kuarsa umumnya memiliki pantulan keseluruhan (albedo) relatif tinggi, sedangkan tanah berlempung halus cenderung lebih gelap karena dapat menahan lebih banyak air dan bahan organik (Hosseinpour-Zarnaq et al., 2025). Mineral lempung silikat memiliki gugus hidroksil yang terikat pada lembaran oktahedral aluminium (Al-OH) atau magnesium (Mg-OH). Kombinasi getaran ikatan Al-OH pada kaolinit, ilit, dan smektit menghasilkan lembah serapan diagnostik sekitar 2,20 \u181?m, disertai serapan gugus OH struktural sekitar 1,40 \u181?m (Chabrillat et al., 2019; Mulder et al., 2011). Kedalaman lembah sekitar 2,20 \u181?m menjadi dasar fisik pendugaan kandungan lempung dari data spektral.\par
+Kelembapan tanah dan kondisi drainase berpengaruh luas terhadap spektrum pantulan. Molekul air bebas di dalam pori tanah menyerap energi kuat di sekitar 1,40 \u181?m dan 1,90 \u181?m. Penambahan kadar air umumnya menurunkan reflektansi dari wilayah tampak hingga SWIR, sementara lembah serapan air makin melebar dan mendalam (Lobell & Asner, 2002). Kelembapan permukaan dan drainase juga dapat diindera melalui inframerah termal (8-14 \u181?m) dan gelombang mikro aktif (SAR). Tanah lembap atau berdrainase terhambat dapat memiliki inersia termal tinggi dan tetapan dielektrik lebih tinggi daripada tanah kering, yang memengaruhi hamburan balik radar (Ulaby et al., 2014; Mulder et al., 2011).\par
+Karbon organik tanah (soil organic carbon, SOC) atau bahan organik tanah (soil organic matter, SOM) merupakan penentu penting rona gelap lapisan tanah atas. Senyawa humik menyerap radiasi kuat pada wilayah tampak hingga awal NIR, sehingga peningkatan C-organik menurunkan kecerahan tanah dan mengubah bentuk kurva tampak-NIR (Ben-Dor et al., 1999; Bartholomeus et al., 2008). Gugus organik seperti C-H, N-H, dan karboksil juga memiliki pita serapan lemah di wilayah SWIR.\par
+Oksida dan hidroksida besi—terutama hematit dan goetit—dapat menjadi indikator tingkat pelapukan batuan induk serta kondisi aerasi atau drainase internal profil tanah. Tanah teroksidasi baik sering berwarna merah hingga kuning kecokelatan, sedangkan tanah tereduksi atau tergenang dapat berwarna kelabu kebiruan atau gley. Transisi elektronik Fe3+ menimbulkan serapan pada kanal biru-hijau dan lonjakan pantulan pada kanal merah yang berkontribusi terhadap warna kemerahan tanah tropis terlapuk lanjut (Viscarra Rossel et al., 2006; Escadafal et al., 1989).\par
+\pard\sa100\sb120\f1\fs26\b\cf1 Sensor hiperspektral dan multispektral\b0\par
+\pard\sa120\sl260\slmult1\f0\fs20\cf0
+Kemampuan sensor memisahkan sinyal sifat tanah bergantung pada resolusi spektralnya. Sensor hiperspektral seperti PRISMA dan EnMAP, atau spektrometer udara dengan ratusan kanal sempit (bandwidth sekitar 5-10 nm), dapat merekam bentuk lembah serapan secara lebih utuh. Hal ini berpotensi membantu membedakan mineral lempung, misalnya pola serapan kaolinit di sekitar 2,16 dan 2,20 \u181?m dibandingkan smektit yang memiliki serapan kuat di sekitar 2,20 \u181?m dan 1,90 \u181?m (Chabrillat et al., 2019; Hosseinpour-Zarnaq et al., 2025).\par
+Sebaliknya, sensor multispektral operasional seperti Sentinel-2 MSI dan Landsat 8/9 OLI merekam pita yang lebih lebar. Sebagai contoh, kanal B12 Sentinel-2 memiliki lebar pita sekitar 180 nm (2,100-2,280 \u181?m), sehingga serapan Al-OH di sekitar 2,20 \u181?m dirangkum ke dalam satu nilai kanal (Drusch et al., 2012; Vaudour et al., 2019). Walaupun tidak menguraikan kurva serapan secara halus, citra multispektral masih dapat digunakan untuk memetakan variasi relatif melalui indeks spektral.\par
+Indeks spektral merupakan transformasi matematis berupa nisbah (ratio), selisih ternormalisasi (normalized difference), atau kombinasi kanal lainnya. Membandingkan kanal yang peka terhadap serapan dengan kanal pembanding dapat membantu mengurangi sebagian pengaruh variasi pencahayaan dan bayangan topografi, tetapi tidak menghilangkan seluruh gangguan tersebut (Lillesand et al., 2015). Untuk mineral lempung, SWIR1 Sentinel-2 (B11; sekitar 1,61 \u181?m) dapat digunakan sebagai kanal pembanding terhadap SWIR2 (B12; sekitar 2,19 \u181?m), yang mencakup serapan Al-OH. Clay Minerals Ratio dan Normalized Difference Clay Index (NDCI) menggunakan hubungan kedua kanal ini untuk menonjolkan variasi respons spektral yang berkaitan dengan mineral lempung (Drury, 1987; Mulder et al., 2011).\par
+\pard\sa100\sb120\f1\fs26\b\cf1 Tabel 4.1 Transformasi Indeks Spektral untuk Estimasi Sifat Tanah dan Indikator Lingkungan pada Citra Sentinel-2\b0\par
+\pard\sa80\f0\fs16\cf0
+Catatan: Rumus menggunakan reflektansi kanal Sentinel-2; R = Red (B4), G = Green (B3), B = Blue (B2), NIR = B8.\par
+\trowd\trgaph60\trleft0\clvertalt\clcbpat1\cellx1600\clvertalt\clcbpat1\cellx3300\clvertalt\clcbpat1\cellx5700\clvertalt\clcbpat1\cellx9000\clvertalt\clcbpat1\cellx10800
+\pard\intbl\fs16\b\cf2 Kelompok indikator\cell
+\pard\intbl\fs16\b\cf2 Nama indeks\cell
+\pard\intbl\fs16\b\cf2 Rumus / kanal Sentinel-2\cell
+\pard\intbl\fs16\b\cf2 Mekanisme fisik dan kaitan sifat tanah\cell
+\pard\intbl\fs16\b\cf2 Rujukan\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Kecerahan dan bahan organik\cell
+\pard\intbl\fs15 Brightness Index (BI)\cell
+\pard\intbl\fs15 \u8730?((R2+G2+B2)/3) = \u8730?((B4^2+B3^2+B2^2)/3)\cell
+\pard\intbl\fs15 Mengukur albedo cahaya tampak. Nilai dapat lebih rendah pada tanah kaya bahan organik atau tanah basah, dan lebih tinggi pada tanah tererosi atau berpasir kering.\cell
+\pard\intbl\fs15 Escadafal et al. (1989); Mulder et al. (2011)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Oksida besi dan warna tanah\cell
+\pard\intbl\fs15 Redness Index (RI)\cell
+\pard\intbl\fs15 R^2/(B x G^3) = B4^2/(B2 x B3^3)\cell
+\pard\intbl\fs15 Menangkap pantulan merah relatif terhadap serapan biru-hijau oleh Fe3+; berkaitan dengan hematit, pelapukan, dan kondisi drainase.\cell
+\pard\intbl\fs15 Pouget et al. (1990); Mathieu et al. (1998)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Oksida besi dan warna tanah\cell
+\pard\intbl\fs15 Coloration Index (CIwarna)\cell
+\pard\intbl\fs15 (R-G)/(R+G) = (B4-B3)/(B4+B3)\cell
+\pard\intbl\fs15 Membantu membedakan rona kekuningan yang berkaitan dengan goetit dan rona kemerahan yang berkaitan dengan hematit pada tanah terbuka.\cell
+\pard\intbl\fs15 Escadafal et al. (1989)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Mineral lempung dan tekstur\cell
+\pard\intbl\fs15 Clay Minerals Ratio (Clay Index)\cell
+\pard\intbl\fs15 SWIR1/SWIR2 = B11/B12\cell
+\pard\intbl\fs15 Membandingkan pantulan sekitar 1,61 \u181?m dengan wilayah serapan Al-OH mineral lempung sekitar 2,20 \u181?m. Interpretasi dipengaruhi mineralogi, kelembapan, dan tutupan permukaan.\cell
+\pard\intbl\fs15 Drury (1987); Fatmawati (2026)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Mineral lempung dan tekstur\cell
+\pard\intbl\fs15 Normalized Difference Clay Index (NDCI)\cell
+\pard\intbl\fs15 (SWIR1-SWIR2)/(SWIR1+SWIR2) = (B11-B12)/(B11+B12)\cell
+\pard\intbl\fs15 Bentuk ternormalisasi dari nisbah SWIR1 dan SWIR2, dengan nilai teoritis antara -1 dan +1, untuk menstabilkan skala nilai.\cell
+\pard\intbl\fs15 Mulder et al. (2011)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Kelembapan dan drainase\cell
+\pard\intbl\fs15 Normalized Difference Water Index (NDWI)\cell
+\pard\intbl\fs15 (NIR-SWIR1)/(NIR+SWIR1) = (B8-B11)/(B8+B11)\cell
+\pard\intbl\fs15 Peka terhadap serapan air pada SWIR1, baik dari kelembapan tajuk maupun permukaan tanah; indikator tidak langsung rezim lengas.\cell
+\pard\intbl\fs15 Gao (1996); Fatmawati (2026)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Vegetasi sebagai proksi tanah (faktor o)\cell
+\pard\intbl\fs15 Normalized Difference Vegetation Index (NDVI)\cell
+\pard\intbl\fs15 (NIR-Red)/(NIR+Red) = (B8-B4)/(B8+B4)\cell
+\pard\intbl\fs15 Mengukur kerapatan dan vigor biomassa hijau; dapat berkaitan tidak langsung dengan masukan serasah, pasokan air, dan hara zona perakaran.\cell
+\pard\intbl\fs15 Rouse et al. (1974); McBratney et al. (2003)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Vegetasi sebagai proksi tanah (faktor o)\cell
+\pard\intbl\fs15 Soil-Adjusted Vegetation Index (SAVI)\cell
+\pard\intbl\fs15 (1+L)(NIR-Red)/(NIR+Red+L), L=0,5\cell
+\pard\intbl\fs15 Menambahkan faktor koreksi latar tanah untuk mengurangi bias kecerahan tanah ketika tajuk belum menutup rapat.\cell
+\pard\intbl\fs15 Huete (1988); Fatmawati (2026)\cell\row
+\trowd\trgaph60\trleft0\clvertalt\cellx1600\clvertalt\cellx3300\clvertalt\cellx5700\clvertalt\cellx9000\clvertalt\cellx10800
+\pard\intbl\fs15 Vegetasi sebagai proksi tanah (faktor o)\cell
+\pard\intbl\fs15 Enhanced Vegetation Index (EVI)\cell
+\pard\intbl\fs15 2,5 x (NIR-Red)/(NIR+6Red-7,5Blue+1)\cell
+\pard\intbl\fs15 Mengurangi kejenuhan sinyal pada biomassa sangat rapat dan mengoreksi sebagian pengaruh aerosol atmosfer.\cell
+\pard\intbl\fs15 Huete et al. (2002); Fatmawati (2026)\cell\row
+\pard\sa100\sl260\slmult1\f0\fs20
+\b Catatan interpretasi.\b0 Indeks pada tabel merupakan indikator spektral atau proksi, bukan pengukuran langsung seluruh sifat tanah. Nilainya dapat dipengaruhi tutupan vegetasi, residu tanaman, kelembapan, bayangan, kondisi atmosfer, topografi, dan karakteristik sensor. Interpretasi dan pemodelan sebaiknya menggunakan area tanah terbuka yang sesuai, komposit waktu konsisten, serta validasi terhadap pengukuran lapangan.\par
+\pard\sa100\sb120\f1\fs26\b\cf1 Indeks vegetasi sebagai proksi tanah dalam kerangka SCORPAN\b0\par
+\pard\sa120\sl260\slmult1\f0\fs20\cf0
+Di wilayah bervegetasi, NDVI, SAVI, dan EVI bukan pengukur langsung sifat tanah, melainkan bio-indicators yang bekerja melalui hubungan timbal balik antara tanaman dan tanah (faktor o dalam SCORPAN) (McBratney et al., 2003; Mulder et al., 2011). Variasi tekstur, kedalaman efektif, drainase, dan kesuburan dapat mengendalikan ketersediaan air dan hara bagi tanaman sehingga tampak sebagai perbedaan vigor tajuk atau ketahanan terhadap cekaman kemarau. Sebaliknya, kerapatan tajuk mengatur masukan bahan organik melalui guguran serasah serta melindungi permukaan tanah dari pukulan hujan dan radiasi matahari langsung, sehingga dapat memengaruhi C-organik, berat volume, dan kadar lengas tanah.\par
+\pard\sa100\sb120\f1\fs26\b\cf1 Rujukan yang disebut dalam naskah\b0\par
+\pard\sa80\sl240\slmult1\f0\fs18\cf0
+Bartholomeus, H. M., et al. (2008). Rujukan mengenai reflektansi spektral dan bahan organik tanah sebagaimana dirujuk dalam naskah sumber.\par
+Ben-Dor, E., et al. (1999, 2009). Rujukan mengenai pengaruh bahan organik dan spektroskopi tanah sebagaimana dirujuk dalam naskah sumber.\par
+Chabrillat, S., et al. (2019). Rujukan mengenai spektroskopi mineral tanah sebagaimana dirujuk dalam naskah sumber.\par
+Drury, S. A. (1987). Rujukan mengenai penginderaan jauh mineral lempung sebagaimana dirujuk dalam naskah sumber.\par
+Drusch, M., et al. (2012). Sentinel-2: ESA's optical high-resolution mission for GMES operational services. Remote Sensing of Environment.\par
+Escadafal, R., et al. (1989). Rujukan mengenai indeks warna dan kecerahan tanah sebagaimana dirujuk dalam naskah sumber.\par
+Gao, B.-C. (1996). NDWI—A normalized difference water index for remote sensing of vegetation liquid water from space. Remote Sensing of Environment.\par
+Huete, A. R. (1988). A soil-adjusted vegetation index (SAVI). Remote Sensing of Environment.\par
+Lillesand, T., Kiefer, R. W., & Chipman, J. (2015). Remote Sensing and Image Interpretation.\par
+Lobell, D. B., & Asner, G. P. (2002). Moisture effects on soil reflectance. Soil Science Society of America Journal.\par
+McBratney, A. B., Mendonça Santos, M. L., & Minasny, B. (2003). On digital soil mapping. Geoderma.\par
+Mulder, V. L., et al. (2011). Rujukan mengenai penginderaan jauh untuk pemetaan sifat tanah sebagaimana dirujuk dalam naskah sumber.\par
+Pouget, M., et al. (1990); Mathieu et al. (1998). Rujukan mengenai indeks spektral tanah dan oksida besi sebagaimana dirujuk dalam naskah sumber.\par
+Rouse, J. W., et al. (1974). Rujukan awal pengembangan NDVI sebagaimana dirujuk dalam naskah sumber.\par
+Ulaby, F. T., et al. (2014). Rujukan mengenai sifat dielektrik dan penginderaan jauh gelombang mikro sebagaimana dirujuk dalam naskah sumber.\par
+Vaudour, E., et al. (2019). Rujukan mengenai pemanfaatan Sentinel-2 untuk pemetaan tanah sebagaimana dirujuk dalam naskah sumber.\par
+Viscarra Rossel, R. A., & Behrens, T. (2010); Viscarra Rossel, R. A., et al. (2006). Rujukan mengenai spektroskopi dan reflektansi tanah sebagaimana dirujuk dalam naskah sumber.\par
+Hosseinpour-Zarnaq, H., et al. (2025). Rujukan mengenai analisis spektral tanah sebagaimana dirujuk dalam naskah sumber.\par
+Fatmawati (2026). Rujukan sebagaimana tercantum dalam naskah sumber; detail bibliografi lengkap perlu dilengkapi dari daftar pustaka induk.\par
+\pard\qc\sa100\f0\fs16\cf1 Modul Pelatihan Remote Sensing dan Digital Soil Mapping • PT SMART • Pusat Studi Pengelolaan Sumber Daya Lahan, UGM\par
+}
