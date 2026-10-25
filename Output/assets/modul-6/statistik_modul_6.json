@@ -1,0 +1,174 @@
+{
+  "per_bentuklahan": {
+    "Interfluve": {
+      "luas_ha": 39.53,
+      "persen_das": 13.41,
+      "median_ndvi": 0.875,
+      "median_ndmi": 0.337,
+      "median_bsi": -0.31,
+      "median_kecerahan_vis_persen": 2.84,
+      "median_tekstur_nir_persen": 2.85,
+      "persen_longsor_aktif": 0.1,
+      "persen_longsor_dorman": 12.1,
+      "persen_bebas_longsor": 87.8,
+      "penggunaan_dominan": "Agroforestri (83.2%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 83.2,
+        "Tegalan": 6.7,
+        "Sawah": 0.1,
+        "Permukiman": 10.0
+      }
+    },
+    "Lereng Atas Perbukitan": {
+      "luas_ha": 49.65,
+      "persen_das": 16.85,
+      "median_ndvi": 0.876,
+      "median_ndmi": 0.331,
+      "median_bsi": -0.305,
+      "median_kecerahan_vis_persen": 2.89,
+      "median_tekstur_nir_persen": 2.98,
+      "persen_longsor_aktif": 1.2,
+      "persen_longsor_dorman": 20.2,
+      "persen_bebas_longsor": 78.6,
+      "penggunaan_dominan": "Agroforestri (83.4%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 83.4,
+        "Tegalan": 7.4,
+        "Sawah": 0.0,
+        "Permukiman": 9.2
+      }
+    },
+    "Lereng Tengah Perbukitan": {
+      "luas_ha": 109.02,
+      "persen_das": 36.99,
+      "median_ndvi": 0.878,
+      "median_ndmi": 0.331,
+      "median_bsi": -0.305,
+      "median_kecerahan_vis_persen": 2.77,
+      "median_tekstur_nir_persen": 3.15,
+      "persen_longsor_aktif": 1.5,
+      "persen_longsor_dorman": 32.4,
+      "persen_bebas_longsor": 66.1,
+      "penggunaan_dominan": "Agroforestri (81.3%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 81.3,
+        "Tegalan": 4.9,
+        "Sawah": 2.0,
+        "Permukiman": 11.8
+      }
+    },
+    "Lereng Bawah Perbukitan": {
+      "luas_ha": 56.28,
+      "persen_das": 19.1,
+      "median_ndvi": 0.861,
+      "median_ndmi": 0.313,
+      "median_bsi": -0.284,
+      "median_kecerahan_vis_persen": 2.99,
+      "median_tekstur_nir_persen": 3.31,
+      "persen_longsor_aktif": 4.8,
+      "persen_longsor_dorman": 38.7,
+      "persen_bebas_longsor": 56.5,
+      "penggunaan_dominan": "Agroforestri (70.5%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 70.5,
+        "Tegalan": 5.2,
+        "Sawah": 5.0,
+        "Permukiman": 19.3
+      }
+    },
+    "Lereng Kaki Koluvial": {
+      "luas_ha": 19.68,
+      "persen_das": 6.68,
+      "median_ndvi": 0.706,
+      "median_ndmi": 0.277,
+      "median_bsi": -0.195,
+      "median_kecerahan_vis_persen": 4.15,
+      "median_tekstur_nir_persen": 3.42,
+      "persen_longsor_aktif": 1.9,
+      "persen_longsor_dorman": 21.1,
+      "persen_bebas_longsor": 76.9,
+      "penggunaan_dominan": "Sawah (58.1%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 23.9,
+        "Tegalan": 2.6,
+        "Sawah": 58.1,
+        "Permukiman": 15.3
+      }
+    },
+    "Dataran Koluvial": {
+      "luas_ha": 20.53,
+      "persen_das": 6.97,
+      "median_ndvi": 0.736,
+      "median_ndmi": 0.294,
+      "median_bsi": -0.223,
+      "median_kecerahan_vis_persen": 4.15,
+      "median_tekstur_nir_persen": 2.91,
+      "persen_longsor_aktif": 0.8,
+      "persen_longsor_dorman": 6.9,
+      "persen_bebas_longsor": 92.4,
+      "penggunaan_dominan": "Sawah (85.3%)",
+      "proporsi_penggunaan": {
+        "Agroforestri": 5.2,
+        "Tegalan": 9.4,
+        "Sawah": 85.3,
+        "Permukiman": 0.0
+      }
+    }
+  },
+  "per_penggunaan_lahan": {
+    "Agroforestri": {
+      "luas_ha": 208.46,
+      "median_ndvi": 0.88,
+      "median_ndmi": 0.34,
+      "median_kecerahan_vis_persen": 2.75,
+      "median_tekstur_nir_persen": 2.92
+    },
+    "Tegalan": {
+      "luas_ha": 17.07,
+      "median_ndvi": 0.825,
+      "median_ndmi": 0.282,
+      "median_kecerahan_vis_persen": 3.77,
+      "median_tekstur_nir_persen": 3.15
+    },
+    "Sawah": {
+      "luas_ha": 33.94,
+      "median_ndvi": 0.7,
+      "median_ndmi": 0.291,
+      "median_kecerahan_vis_persen": 4.24,
+      "median_tekstur_nir_persen": 3.09
+    },
+    "Permukiman": {
+      "luas_ha": 35.22,
+      "median_ndvi": 0.714,
+      "median_ndmi": 0.158,
+      "median_kecerahan_vis_persen": 4.08,
+      "median_tekstur_nir_persen": 4.24
+    }
+  },
+  "per_zona_longsor": {
+    "Longsor aktif dalam": {
+      "luas_ha": 2.93,
+      "persen_das": 0.99,
+      "median_ndvi": 0.849,
+      "median_tekstur_nir_persen": 3.15
+    },
+    "Longsor aktif dangkal": {
+      "luas_ha": 2.6,
+      "persen_das": 0.88,
+      "median_ndvi": 0.826,
+      "median_tekstur_nir_persen": 3.71
+    },
+    "Longsor dorman": {
+      "luas_ha": 77.47,
+      "persen_das": 26.29,
+      "median_ndvi": 0.877,
+      "median_tekstur_nir_persen": 2.95
+    }
+  },
+  "jaringan_drainase": {
+    "Sungai perenial": 2956.2,
+    "Sungai intermiten": 4526.3,
+    "total_panjang_m": 7482.5,
+    "kerapatan_drainase_km_per_km2": 2.54
+  }
+}

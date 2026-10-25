@@ -1,0 +1,39 @@
+{
+  "jumlah_sampel": 50,
+  "jumlah_kanal": 211,
+  "rentang_nm": [
+    400,
+    2500
+  ],
+  "interval_nm": 10,
+  "statistik_lempung": {
+    "min": 35.69,
+    "mean": 51.82,
+    "median": 51.65,
+    "sd": 7.4,
+    "max": 68.18
+  },
+  "evaluasi_plsr_lempung_10fold": {
+    "Reflektansi mentah (R)": {
+      "R2_cv": 0.811,
+      "RMSE_cv": 3.18,
+      "MAE_cv": 2.46,
+      "RPD": 2.32,
+      "RPIQ": 2.79
+    },
+    "Absorbansi + SNV": {
+      "R2_cv": 0.881,
+      "RMSE_cv": 2.53,
+      "MAE_cv": 2.09,
+      "RPD": 2.92,
+      "RPIQ": 3.51
+    },
+    "SNV + Savitzky-Golay d1": {
+      "R2_cv": 0.894,
+      "RMSE_cv": 2.39,
+      "MAE_cv": 1.75,
+      "RPD": 3.1,
+      "RPIQ": 3.72
+    }
+  }
+}

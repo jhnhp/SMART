@@ -1,0 +1,45 @@
+{
+  "diakses": "2026-10-22",
+  "sentinel2": {
+    "adegan": "S2B_49MCM_20250721_0_L2A",
+    "tanggal_perekaman": "2025-07-21T03:00:11.894000Z",
+    "processing_baseline": "05.11",
+    "tutupan_awan_petak_persen": 0.127234,
+    "katalog": "https://earth-search.aws.element84.com/v1/collections/sentinel-2-l2a/items/S2B_49MCM_20250721_0_L2A",
+    "konversi": "reflektansi = DN * 0.0001 (offset BOA sudah diterapkan pada COG)",
+    "earthsearch_boa_offset_applied": true,
+    "kanal": [
+      "B02",
+      "B03",
+      "B04",
+      "B05",
+      "B06",
+      "B07",
+      "B08",
+      "B8A",
+      "B11",
+      "B12"
+    ],
+    "atribusi": "Contains modified Copernicus Sentinel data 2025"
+  },
+  "copernicus_dem": {
+    "sumber": "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S08_00_E110_00_DEM/Copernicus_DSM_COG_10_S08_00_E110_00_DEM.tif",
+    "doi": "https://doi.org/10.5270/ESA-c5d3d65",
+    "catatan": "DSM (permukaan termasuk tajuk dan bangunan), resolusi asli 1 detik busur"
+  },
+  "grid": {
+    "epsg": 32749,
+    "batas_10m": [
+      396060,
+      9162990,
+      397980,
+      9166610
+    ],
+    "batas_30m": [
+      396060,
+      9162990,
+      397980,
+      9166620
+    ]
+  }
+}

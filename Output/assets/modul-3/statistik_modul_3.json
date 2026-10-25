@@ -1,0 +1,143 @@
+{
+  "mla_ha": 0.4,
+  "resolusi_analisis_m": 2.0,
+  "tumpang_susun": {
+    "luas_teranalisis_ha": 294.59,
+    "jumlah_kombinasi": 111,
+    "jumlah_poligon": 56837,
+    "poligon_lebih_kecil_dari_mla": 56796,
+    "persen_poligon_kecil": 99.93,
+    "persen_luas_pada_poligon_kecil": 84.4,
+    "kombinasi_dengan_luas_total_kurang_dari_mla": 47
+  },
+  "per_lapisan": {
+    "bentuklahan": {
+      "jumlah_poligon": 68,
+      "poligon_lebih_kecil_dari_mla": 8
+    },
+    "kelas_lereng": {
+      "jumlah_poligon": 44425,
+      "poligon_lebih_kecil_dari_mla": 44354
+    },
+    "penggunaan_lahan": {
+      "jumlah_poligon": 73,
+      "poligon_lebih_kecil_dari_mla": 43
+    }
+  },
+  "generalisasi_otomatis": {
+    "lereng": {
+      "putaran_sieve": 4,
+      "jumlah_poligon_setelah": 25,
+      "persen_piksel_berubah_kelas": 54.7,
+      "luas_kelas_ha_sebelum": {
+        "Datar (0-8%)": 103.1,
+        "Landai (8-15%)": 62.7,
+        "Agak Curam (15-25%)": 74.9,
+        "Curam (25-45%)": 50.7,
+        "Sangat Curam (>45%)": 3.2
+      },
+      "luas_kelas_ha_sesudah": {
+        "Datar (0-8%)": 127.1,
+        "Landai (8-15%)": 11.7,
+        "Agak Curam (15-25%)": 85.5,
+        "Curam (25-45%)": 70.4
+      }
+    },
+    "tumpang_susun_ulang": {
+      "jumlah_poligon": 2143,
+      "poligon_lebih_kecil_dari_mla": 1967,
+      "jumlah_kombinasi": 73
+    },
+    "akhir": {
+      "putaran_sieve": 2,
+      "jumlah_poligon": 158,
+      "poligon_lebih_kecil_dari_mla": 0,
+      "jumlah_kombinasi": 33,
+      "luas_rata_rata_poligon_ha": 1.87,
+      "kombinasi_terbesar": [
+        [
+          "Agroforestri Lereng Tengah Perbukitan Agak Curam",
+          41.29
+        ],
+        [
+          "Agroforestri Lereng Tengah Perbukitan Datar",
+          33.14
+        ],
+        [
+          "Agroforestri Lereng Tengah Perbukitan Curam",
+          25.41
+        ],
+        [
+          "Sawah Dataran Koluvial Datar",
+          24.9
+        ],
+        [
+          "Agroforestri Lereng Bawah Perbukitan Datar",
+          23.22
+        ]
+      ]
+    }
+  },
+  "sampel": {
+    "jumlah_titik": 50,
+    "jumlah_strata_tersampel": 32,
+    "strata_tersampel_yang_ada_pada_tumpang_susun_asli": 32,
+    "strata_tersampel_yang_bertahan_setelah_generalisasi_otomatis": 22,
+    "kombinasi_setelah_generalisasi_tanpa_sampel": 11
+  },
+  "tabulasi_bentuklahan_penggunaan_ha": {
+    "Interfluve": {
+      "Agroforestri": 33.09,
+      "Tegalan": 2.62,
+      "Sawah": 0.03,
+      "Permukiman": 3.85
+    },
+    "Lereng Atas Perbukitan": {
+      "Agroforestri": 41.49,
+      "Tegalan": 3.65,
+      "Sawah": 0.0,
+      "Permukiman": 4.56
+    },
+    "Lereng Tengah Perbukitan": {
+      "Agroforestri": 88.71,
+      "Tegalan": 5.41,
+      "Sawah": 2.01,
+      "Permukiman": 12.95
+    },
+    "Lereng Bawah Perbukitan": {
+      "Agroforestri": 39.54,
+      "Tegalan": 2.9,
+      "Sawah": 2.83,
+      "Permukiman": 10.85
+    },
+    "Lereng Kaki Koluvial": {
+      "Agroforestri": 4.64,
+      "Tegalan": 0.54,
+      "Sawah": 11.51,
+      "Permukiman": 3.06
+    },
+    "Dataran Koluvial": {
+      "Agroforestri": 1.04,
+      "Tegalan": 1.91,
+      "Sawah": 17.49,
+      "Permukiman": 0.0
+    }
+  },
+  "kelas_lereng_persen": {
+    "dtm_lidar_data_proyek": {
+      "Datar (0-8%)": 34.9,
+      "Landai (8-15%)": 21.4,
+      "Agak Curam (15-25%)": 25.3,
+      "Curam (25-45%)": 17.2,
+      "Sangat Curam (>45%)": 1.1
+    },
+    "copernicus_dem_30m": {
+      "Datar (0-8%)": 10.4,
+      "Landai (8-15%)": 20.9,
+      "Agak Curam (15-25%)": 40.2,
+      "Curam (25-45%)": 27.9,
+      "Sangat Curam (>45%)": 0.5
+    },
+    "median_lereng_copdem_persen": 19.3
+  }
+}

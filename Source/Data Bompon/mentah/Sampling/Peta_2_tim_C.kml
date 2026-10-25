@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+
+    <Placemark>
+        <name>C 34 Clear</name>
+        <description>Date: 2025-02-22T08:26:23+07:00&#10;Elevation: 0.0 m</description>
+        <Point>
+            <coordinates>110.065659788216,-7.55684906679177,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C33</name>
+        <description>Date: 2025-02-23T08:41:52+07:00&#10;Elevation: 459.987671 m</description>
+        <Point>
+            <coordinates>110.061599174307,-7.55954985430718,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>c35 Clear</name>
+        <description>Date: 2025-02-22T07:27:16+07:00&#10;Elevation: 0.0 m</description>
+        <Point>
+            <coordinates>110.06780327,-7.55699913999998,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C36 Clear</name>
+        <description>Date: 2025-02-22T08:25:32+07:00&#10;Elevation: 0.0 m</description>
+        <Point>
+            <coordinates>110.072450319391,-7.55711930439984,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C39</name>
+        <description>Date: 2025-02-23T09:06:39+07:00&#10;Elevation: 453.006378 m</description>
+        <Point>
+            <coordinates>110.062768824949,-7.56028495498152,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C40</name>
+        <description>Date: 2025-02-23T09:41:55+07:00&#10;Elevation: 481.287445 m</description>
+        <Point>
+            <coordinates>110.06155472,-7.56211418,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C41</name>
+        <description>Date: 2025-02-23T10:09:19+07:00&#10;Elevation: 479.080933 m</description>
+        <Point>
+            <coordinates>110.06342748,-7.56236763999999,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C44</name>
+        <description>Date: 2025-02-23T10:30:02+07:00&#10;Elevation: 421.384521 m</description>
+        <Point>
+            <coordinates>110.068151122148,-7.55982903209861,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>C48</name>
+        <description>Date: 2025-02-23T08:04:26+07:00&#10;Elevation: 470.075592 m</description>
+        <Point>
+            <coordinates>110.06362347,-7.56415502999999,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>Tanda tempat 1</name>
+        <description>Date: 2025-02-23T08:14:15+07:00&#10;Elevation: 0.0 m</description>
+        <Point>
+            <coordinates>110.063605541151,-7.56417185646328,0</coordinates>
+        </Point>
+    </Placemark>
+    <Placemark>
+        <name>Tanda tempat 2</name>
+        <description>Date: 2025-02-23T09:03:15+07:00&#10;Elevation: 0.0 m</description>
+        <Point>
+            <coordinates>110.063621972222,-7.56417097222222,0</coordinates>
+        </Point>
+    </Placemark></Document>
+</kml>

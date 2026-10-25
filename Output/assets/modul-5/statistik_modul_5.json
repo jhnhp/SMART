@@ -1,0 +1,165 @@
+{
+  "total_piksel_10m": 29469,
+  "luas_grid_10m_ha": 294.69,
+  "korelasi_ndvi_bsi": -0.813,
+  "keseluruhan": {
+    "BSI": {
+      "min": -0.48,
+      "p05": -0.384,
+      "median": -0.294,
+      "mean": -0.267,
+      "p95": -0.059,
+      "max": 0.232
+    },
+    "MBI": {
+      "min": -0.071,
+      "p05": 0.022,
+      "median": 0.085,
+      "mean": 0.095,
+      "p95": 0.206,
+      "max": 0.382
+    },
+    "NBR2": {
+      "min": 0.056,
+      "p05": 0.23,
+      "median": 0.373,
+      "mean": 0.354,
+      "p95": 0.416,
+      "max": 0.448
+    },
+    "NDVI": {
+      "min": 0.038,
+      "p05": 0.546,
+      "median": 0.869,
+      "mean": 0.82,
+      "p95": 0.907,
+      "max": 0.936
+    }
+  },
+  "proporsi_keterbukaan": {
+    "Vegetasi rapat (NDVI >= 0,75)": {
+      "piksel": 24269,
+      "luas_ha": 242.69,
+      "persen": 82.35
+    },
+    "Vegetasi campuran (0,55 <= NDVI < 0,75)": {
+      "piksel": 4011,
+      "luas_ha": 40.11,
+      "persen": 13.61
+    },
+    "Tanah terbuka/bera pertanian (NDVI < 0,55 & BSI > -0,12)": {
+      "piksel": 530,
+      "luas_ha": 5.3,
+      "persen": 1.8
+    },
+    "Permukaan terbangun/permukiman terbuka": {
+      "piksel": 659,
+      "luas_ha": 6.59,
+      "persen": 2.24
+    }
+  },
+  "per_penggunaan_lahan": {
+    "Agroforestri": {
+      "luas_ha": 208.46,
+      "median_ndvi": 0.88,
+      "median_bsi": -0.314,
+      "q25_bsi": -0.347,
+      "q75_bsi": -0.275,
+      "median_mbi": 0.075,
+      "median_nbr2": 0.387,
+      "piksel_terbuka_sebagian": 31,
+      "persen_terbuka_sebagian": 0.15,
+      "piksel_terbuka_murni_ndvi04_bsi0": 0,
+      "persen_terbuka_murni": 0.0
+    },
+    "Tegalan": {
+      "luas_ha": 17.07,
+      "median_ndvi": 0.825,
+      "median_bsi": -0.245,
+      "q25_bsi": -0.294,
+      "q75_bsi": -0.181,
+      "median_mbi": 0.11,
+      "median_nbr2": 0.335,
+      "piksel_terbuka_sebagian": 32,
+      "persen_terbuka_sebagian": 1.87,
+      "piksel_terbuka_murni_ndvi04_bsi0": 3,
+      "persen_terbuka_murni": 0.18
+    },
+    "Sawah": {
+      "luas_ha": 33.94,
+      "median_ndvi": 0.7,
+      "median_bsi": -0.208,
+      "q25_bsi": -0.279,
+      "q75_bsi": -0.139,
+      "median_mbi": 0.102,
+      "median_nbr2": 0.331,
+      "piksel_terbuka_sebagian": 467,
+      "persen_terbuka_sebagian": 13.76,
+      "piksel_terbuka_murni_ndvi04_bsi0": 10,
+      "persen_terbuka_murni": 0.29
+    },
+    "Permukiman": {
+      "luas_ha": 35.22,
+      "median_ndvi": 0.714,
+      "median_bsi": -0.115,
+      "q25_bsi": -0.209,
+      "q75_bsi": -0.022,
+      "median_mbi": 0.169,
+      "median_nbr2": 0.248,
+      "piksel_terbuka_sebagian": 659,
+      "persen_terbuka_sebagian": 18.71,
+      "piksel_terbuka_murni_ndvi04_bsi0": 135,
+      "persen_terbuka_murni": 3.83
+    }
+  },
+  "spektrum_median": {
+    "Vegetasi rapat": {
+      "B02": 0.0231,
+      "B03": 0.0394,
+      "B04": 0.0214,
+      "B05": 0.0702,
+      "B06": 0.2349,
+      "B07": 0.3057,
+      "B08": 0.324,
+      "B8A": 0.3324,
+      "B11": 0.1615,
+      "B12": 0.0729
+    },
+    "Vegetasi campuran": {
+      "B02": 0.0349,
+      "B03": 0.055,
+      "B04": 0.048,
+      "B05": 0.0876,
+      "B06": 0.197,
+      "B07": 0.2438,
+      "B08": 0.2348,
+      "B8A": 0.2634,
+      "B11": 0.1683,
+      "B12": 0.0927
+    },
+    "Tanah terbuka/bera pertanian": {
+      "B02": 0.0402,
+      "B03": 0.065,
+      "B04": 0.0664,
+      "B05": 0.1023,
+      "B06": 0.1681,
+      "B07": 0.1949,
+      "B08": 0.1683,
+      "B8A": 0.2002,
+      "B11": 0.1151,
+      "B12": 0.0605
+    },
+    "Permukaan terbuka kering (BSI > 0)": {
+      "B02": 0.0639,
+      "B03": 0.0754,
+      "B04": 0.0935,
+      "B05": 0.1066,
+      "B06": 0.1716,
+      "B07": 0.2087,
+      "B08": 0.1887,
+      "B8A": 0.2294,
+      "B11": 0.217,
+      "B12": 0.1674
+    }
+  }
+}
