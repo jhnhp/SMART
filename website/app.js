@@ -160,7 +160,32 @@ $('focusBtn').addEventListener('click', () => {
   document.body.classList.toggle('focus-mode');
   $('focusBtn').textContent = document.body.classList.contains('focus-mode') ? 'Keluar mode baca ↙' : 'Mode baca ↗';
 });
-$('menuToggle').addEventListener('click', () => $('sidebar').classList.toggle('open'));
+function closeModuleDrawer() {
+  $('sidebar').classList.remove('open');
+  document.body.classList.remove('nav-drawer-open');
+  $('menuToggle').setAttribute('aria-expanded','false');
+}
+$('menuToggle').setAttribute('aria-controls','sidebar');
+$('menuToggle').setAttribute('aria-expanded','false');
+$('menuToggle').addEventListener('click', () => {
+  if (window.matchMedia('(max-width: 1100px)').matches) {
+    const open = $('sidebar').classList.toggle('open');
+    document.body.classList.toggle('nav-drawer-open', open);
+    $('menuToggle').setAttribute('aria-expanded', String(open));
+  } else {
+    const collapsed = document.body.classList.toggle('nav-sidebar-collapsed');
+    $('menuToggle').setAttribute('aria-expanded', String(!collapsed));
+    $('menuToggle').setAttribute('title', collapsed ? 'Tampilkan daftar modul' : 'Sembunyikan daftar modul');
+  }
+});
+document.addEventListener('click', e => {
+  if (document.body.classList.contains('nav-drawer-open') &&
+      !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) closeModuleDrawer();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModuleDrawer(); });
+window.addEventListener('resize', () => {
+  if (!window.matchMedia('(max-width: 1100px)').matches) closeModuleDrawer();
+});
 $('prevModule').addEventListener('click', () => loadModule(current-1, true));
 $('nextModule').addEventListener('click', () => loadModule(current === 8 ? 1 : current+1, true));
 window.addEventListener('scroll', () => {
