@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f7f7f2"><meta name="description" content="Pembaca digital delapan modul Pelatihan Pemanfaatan Remote Sensing dan Digital Soil Mapping.">
+<title>SMART Fieldbook — Remote Sensing & Digital Soil Mapping</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+ <a class="wordmark" href="#home" aria-label="SMART Fieldbook beranda"><span class="mark">S<span>·</span></span><span>SMART <small>FIELD BOOK / UGM</small></span></a>
+ <div class="top-actions">
+  <label class="searchbox"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Cari istilah atau topik…" autocomplete="off" aria-label="Cari dalam seluruh modul"><kbd>↵</kbd></label>
+  <button class="icon-btn" id="themeToggle" title="Ubah tema" aria-label="Ubah tema">◐</button>
+  <button class="icon-btn" id="textToggle" title="Ukuran teks" aria-label="Ubah ukuran teks">Aa</button>
+  <button class="icon-btn" id="printBtn" title="Cetak atau simpan PDF" aria-label="Cetak atau simpan PDF">↗</button>
+  <button class="menu-btn" id="menuToggle" aria-label="Buka daftar modul">☰</button>
+ </div>
+</header>
+<div class="reading-progress"><span id="progressBar"></span></div>
+<div class="app-shell" id="home">
+ <aside class="sidebar" id="sidebar">
+  <div class="sidebar-top"><span class="eyebrow">PANDUAN PELATIHAN</span><span class="module-count">08 MODUL</span></div>
+  <div class="course-name">Remote Sensing<br><em>& Digital Soil Mapping</em></div>
+  <div class="nav-label">MATERI PEMBELAJARAN</div>
+  <nav id="moduleNav" aria-label="Navigasi modul"></nav>
+  <div class="sidebar-footer"><span class="live-dot"></span> Sumber materi: file Markdown asli<br><span class="sidebar-note">Konten tidak ditulis ulang.</span></div>
+ </aside>
+ <main class="main-area">
+  <section class="hero" id="hero">
+   <div class="hero-copy"><div class="hero-label"><span class="live-dot"></span> MODUL PELATIHAN AKADEMIK</div>
+    <h1>Memahami tanah.<br><em>Membaca lanskap.</em></h1>
+    <p class="hero-description">Pelatihan Pemanfaatan Remote Sensing dan Digital Soil Mapping untuk Pertanian Presisi pada Perkebunan Kelapa Sawit.</p>
+    <div class="hero-meta"><span>PS2DL · Universitas Gadjah Mada</span><span class="meta-separator">/</span><span>8 modul pembelajaran</span></div>
+   </div>
+   <div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit orbit-three"></div><div class="terrain"><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="art-caption">LANDSCAPE<br>AS A SYSTEM <span>↗</span></div><div class="coordinate">07° 36′ S<br>110° 12′ E</div></div>
+  </section>
+  <section class="overview" id="overview">
+   <div class="section-heading"><div><span class="eyebrow">JELAJAHI MATERI</span><h2>Delapan modul, satu alur.</h2></div><p>Mulai dari konsep dasar hingga integrasi pemetaan tanah digital. Pilih modul atau baca berurutan.</p></div>
+   <div class="module-grid" id="moduleCards"></div>
+  </section>
+  <section class="reader-section" id="readerSection">
+   <div class="reader-toolbar"><div><span class="eyebrow" id="readerKicker">MODUL 01 / 08</span><h2 id="readerTitle">Memuat materi…</h2></div><div class="reader-tools"><span id="readerTime">BACA BERURUTAN</span><button id="focusBtn" class="quiet-btn">Mode baca ↗</button></div></div>
+   <div class="reader-layout"><nav class="chapter-nav" id="chapterNav" aria-label="Daftar isi modul ini"><div class="nav-label">DALAM MODUL INI</div><div class="chapter-list" id="chapterList">Daftar isi akan muncul setelah materi dimuat.</div></nav>
+    <article class="prose" id="prose"><div class="loading"><span class="spinner"></span><p>Memuat materi dari file sumber…</p></div></article>
+   </div>
+   <div class="reader-pagination"><button id="prevModule" class="page-link">← Modul sebelumnya</button><span id="pageCounter">01 / 08</span><button id="nextModule" class="page-link next">Modul berikutnya →</button></div>
+  </section>
+  <footer class="site-footer"><div class="footer-mark">S<span>·</span></div><div><strong>SMART Fieldbook</strong><p>Pelatihan Remote Sensing & Digital Soil Mapping<br>PS2DL · Universitas Gadjah Mada</p></div><a href="https://github.com/jhnhp/SMART" target="_blank" rel="noopener">Repository ↗</a></footer>
+ </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="app.js"></script>
+</body></html>
