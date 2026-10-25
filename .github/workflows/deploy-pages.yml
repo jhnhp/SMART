@@ -28,7 +28,7 @@ jobs:
       - name: Assemble static site from original Markdown
         run: |
           mkdir -p _site/modules _site/assets
-          cp website/index.html website/styles.css website/app.js _site/
+          cp website/index.html website/styles.css website/app.js website/modul-*.html _site/
           for n in 1 2 3 4 5 6 7 8; do
             cp "Output/Modul $n.md" "_site/modules/Modul $n.md"
           done
