@@ -25,16 +25,14 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-      - name: Assemble static site from original Markdown
-        run: |
-          mkdir -p _site/modules _site/assets
-          cp website/index.html website/styles.css website/app.js website/modul-*.html _site/
-          for n in 1 2 3 4 5 6 7 8; do
-            cp "Output/Modul $n.md" "_site/modules/Modul $n.md"
-          done
-          cp -R Output/assets/. _site/assets/
-          cat > _site/.nojekyll <<'EOF'
-          EOF
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install static Markdown renderer
+        run: npm install --no-save marked
+      - name: Convert original Markdown into complete HTML pages
+        run: node website/build-modules.mjs
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
