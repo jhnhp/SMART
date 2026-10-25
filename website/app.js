@@ -63,5 +63,5 @@ $('menuToggle').addEventListener('click',()=>$('sidebar').classList.toggle('open
 $('prevModule').addEventListener('click',()=>loadModule(current-1,true));$('nextModule').addEventListener('click',()=>loadModule(current===8?1:current+1,true));
 window.addEventListener('scroll',()=>{const d=document.documentElement;const max=d.scrollHeight-innerHeight;$('progressBar').style.width=(max>0?scrollY/max*100:0)+'%';if(!document.body.classList.contains('focus-mode')){let active=current;for(let n=1;n<=8;n++){const el=document.querySelector('[data-module="'+n+'"].module-card');if(el&&el.getBoundingClientRect().top<innerHeight*.7)active=n}document.querySelectorAll('.module-nav-item').forEach(el=>el.classList.toggle('active',Number(el.dataset.module)===current))}},{passive:true});
 if(localStorage.getItem('smart-theme')==='dark')document.documentElement.dataset.theme='dark';
-makeNav();loadModule(1,false);
+makeNav();
 })();
