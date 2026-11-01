@@ -1,7 +1,7 @@
-"""Gambar Modul 1 — Dasar-dasar Remote Sensing dan Digital Soil Mapping.
+"""Gambar Modul 1 — Pengantar Remote Sensing dan Digital Soil Mapping.
 
 Jalankan: python3 Output/scripts/gambar_modul_1.py
-Keluaran: Output/assets/modul-1/M1-Gxx_*.png
+Keluaran: Output/assets/modul-1/M1-Gxx_*.png (gambar) dan M1-T01x_*.png (ilustrasi Tabel 1.1)
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -310,9 +310,9 @@ def g04_respons_spektral():
     simpan(fig, MODUL, "M1-G04_pola-respons-spektral.png")
 
 
-# ---------------------------------------------------------------- Gambar 1.5
+# ---------------------------------------------------------------- Tabel 1.1 (ilustrasi dalam tabel)
 def bentang_sintetis(n=120, seed=4):
-    """Bentang lahan sintetis (RGB 0–1) untuk ilustrasi resolusi spasial."""
+    """Bentang lahan sintetis (RGB 0–1) untuk ilustrasi resolusi spasial dan radiometrik."""
     rng = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:n, 0:n]
     img = np.zeros((n, n, 3))
@@ -337,31 +337,21 @@ def kasarkan(img, f):
     return np.kron(b, np.ones((f, f, 1)))
 
 
-def judul_panel(fig, sel, teks):
-    a = fig.add_subplot(sel)
-    a.axis("off")
-    a.set_title(teks, loc="left", pad=4)
-
-
-def g05_empat_resolusi():
-    fig = plt.figure(figsize=(10, 7.0))
-    gs = fig.add_gridspec(2, 2, hspace=0.30, wspace=0.16, left=0.02, right=0.98, top=0.95, bottom=0.07)
+def t01a_resolusi_spasial():
     img = bentang_sintetis()
-
-    # (a) spasial
-    judul_panel(fig, gs[0, 0], "(a) Resolusi spasial")
-    sub = gs[0, 0].subgridspec(1, 3, wspace=0.06)
-    for k, (f, label) in enumerate(((1, "piksel 10 m"), (3, "piksel 30 m"), (6, "piksel 60 m"))):
-        a = fig.add_subplot(sub[0, k])
+    fig, axs = plt.subplots(1, 3, figsize=(4.8, 1.95))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.15, wspace=0.06)
+    for a, (f, label) in zip(axs, ((1, "piksel 10 m"), (3, "piksel 30 m"), (6, "piksel 60 m"))):
         a.imshow(kasarkan(img, f), interpolation="nearest")
         a.set_xticks([]), a.set_yticks([])
         a.set_xlabel(label, fontsize=8.5)
+    simpan(fig, MODUL, "M1-T01a_resolusi-spasial.png")
 
-    # (b) spektral
-    judul_panel(fig, gs[0, 1], "(b) Resolusi spektral")
-    a = fig.add_subplot(gs[0, 1].subgridspec(10, 1)[1:, 0])
+
+def t01b_resolusi_spektral():
+    fig, a = plt.subplots(figsize=(4.8, 2.2))
     baris = [("Pankromatik: satu kanal lebar", [(0.45, 0.90)], WARNA["abu"]),
-             ("Multispektral: beberapa kanal (contoh Sentinel-2)",
+             ("Multispektral: beberapa kanal",
               [(0.458, 0.523), (0.543, 0.578), (0.650, 0.680), (0.698, 0.713), (0.733, 0.748), (0.773, 0.793),
                (0.785, 0.900), (0.855, 0.875), (1.565, 1.655), (2.100, 2.280)], WARNA["teal"]),
              ("Hiperspektral: ratusan kanal sempit bersambung", [(w, w + 0.009) for w in np.arange(0.40, 2.50, 0.010)], WARNA["ungu"])]
@@ -376,46 +366,48 @@ def g05_empat_resolusi():
     a.spines["left"].set_visible(False)
     a.set_xlabel("Panjang gelombang (µm)", fontsize=8.5)
     a.tick_params(labelsize=8)
+    simpan(fig, MODUL, "M1-T01b_resolusi-spektral.png")
 
-    # (c) radiometrik
-    judul_panel(fig, gs[1, 0], "(c) Resolusi radiometrik")
-    sub = gs[1, 0].subgridspec(1, 3, wspace=0.06)
+
+def t01c_resolusi_radiometrik():
+    img = bentang_sintetis()
     abu = img @ np.array([0.30, 0.59, 0.11])
     abu = (abu - abu.min()) / (abu.max() - abu.min())
-    for k, bit in enumerate((1, 2, 8)):
+    fig, axs = plt.subplots(1, 3, figsize=(4.8, 1.95))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.15, wspace=0.06)
+    for a, bit in zip(axs, (1, 2, 8)):
         tingkat = 2 ** bit
         q = np.floor(abu * (tingkat - 1e-9)) / (tingkat - 1)
-        a = fig.add_subplot(sub[0, k])
         a.imshow(q, cmap="gray", vmin=0, vmax=1, interpolation="nearest")
         a.set_xticks([]), a.set_yticks([])
-        a.set_xlabel(f"{bit} bit = {tingkat} tingkat keabuan", fontsize=8.5)
+        a.set_xlabel(f"{bit} bit = {tingkat} tingkat", fontsize=8.5)
+    simpan(fig, MODUL, "M1-T01c_resolusi-radiometrik.png")
 
-    # (d) temporal
-    judul_panel(fig, gs[1, 1], "(d) Resolusi temporal")
-    a = fig.add_subplot(gs[1, 1].subgridspec(10, 1)[1:, 0])
+
+def t01d_resolusi_temporal():
+    fig, a = plt.subplots(figsize=(4.8, 2.2))
     rng = np.random.default_rng(11)
-    for i, (label, langkah) in enumerate((("Perekaman ulang tiap 5 hari (Sentinel-2, dua satelit)", 5),
-                                          ("Perekaman ulang tiap 16 hari (Landsat 8)", 16))):
+    for i, (label, langkah) in enumerate((("Perekaman ulang tiap 5 hari", 5), ("Perekaman ulang tiap 16 hari", 16))):
         y = 1 - i
         hari = np.arange(1, 91, langkah)
         awan = rng.random(len(hari)) < 0.45
         a.plot([0, 90], [y, y], color=WARNA["abu_muda"], lw=6, solid_capstyle="round", zorder=1)
-        a.scatter(hari[~awan], [y] * (~awan).sum(), s=46, color=WARNA["teal"], zorder=3, label="perekaman cerah" if i == 0 else None)
-        a.scatter(hari[awan], [y] * awan.sum(), s=46, facecolor="white", edgecolor=WARNA["abu"], zorder=3,
-                  label="perekaman tertutup awan (ilustrasi)" if i == 0 else None)
+        a.scatter(hari[~awan], [y] * (~awan).sum(), s=40, color=WARNA["teal"], zorder=3, label="perekaman cerah" if i == 0 else None)
+        a.scatter(hari[awan], [y] * awan.sum(), s=40, facecolor="white", edgecolor=WARNA["abu"], zorder=3,
+                  label="tertutup awan (ilustrasi)" if i == 0 else None)
         a.text(0, y + 0.22, label, ha="left", va="bottom", fontsize=8.5)
     a.set_xlim(-1, 91)
-    a.set_ylim(-0.5, 2.1)
+    a.set_ylim(-0.5, 2.25)
     a.set_yticks([])
     a.spines["left"].set_visible(False)
     a.set_xlabel("Hari ke-", fontsize=8.5)
     a.tick_params(labelsize=8)
-    a.legend(loc="upper left", ncol=2, fontsize=8, bbox_to_anchor=(0.0, 1.04), handletextpad=0.3, columnspacing=1.2)
-    simpan(fig, MODUL, "M1-G05_ilustrasi-empat-resolusi.png")
+    a.legend(loc="upper left", ncol=2, fontsize=8, bbox_to_anchor=(0.0, 1.06), handletextpad=0.3, columnspacing=1.0)
+    simpan(fig, MODUL, "M1-T01d_resolusi-temporal.png")
 
 
-# ---------------------------------------------------------------- Gambar 1.6
-def g06_scorpan():
+# ---------------------------------------------------------------- Gambar 1.5
+def g05_scorpan():
     fig, ax = kanvas(9, 6.6, (0, 100), (0, 74))
     pusat = (50, 39)
     ax.add_patch(Circle(pusat, 10.5, fc=WARNA["navy"], ec="none", zorder=4))
@@ -444,11 +436,11 @@ def g06_scorpan():
         akhir = (pusat[0] - dx / jarak * 11.2, pusat[1] - dy / jarak * 11.2)
         panah(ax, *mulai, *akhir, warna=warna, lw=1.3)
     ax.text(50, 3.0, "S = f (s, c, o, r, p, a, n) + ε", ha="center", fontsize=12, fontweight="bold", color=WARNA["navy"])
-    simpan(fig, MODUL, "M1-G06_konsep-scorpan.png")
+    simpan(fig, MODUL, "M1-G05_konsep-scorpan.png")
 
 
-# ---------------------------------------------------------------- Gambar 1.7
-def g07_siklus_pertanian_presisi():
+# ---------------------------------------------------------------- Gambar 1.6
+def g06_siklus_pertanian_presisi():
     fig, ax = kanvas(9, 6.0, (0, 100), (0, 66))
     pusat = (50, 33)
     ax.add_patch(Circle(pusat, 9.5, fc=WARNA["latar"], ec=WARNA["navy"], lw=1.2, zorder=2))
@@ -477,111 +469,7 @@ def g07_siklus_pertanian_presisi():
         a, b = np.array(posisi[i]), np.array(posisi[(i + 1) % 5])
         arah = (b - a) / np.hypot(*(b - a))
         panah(ax, *(a + arah * tepi(arah)), *(b - arah * tepi(arah)), warna=WARNA["navy"], lw=1.4, lengkung=-0.12)
-    simpan(fig, MODUL, "M1-G07_siklus-pertanian-presisi.png")
-
-
-# ---------------------------------------------------------------- Gambar 1.8
-def g08_alur_kerja_dsm():
-    fig, ax = kanvas(10, 3.9, (0, 100), (0, 39))
-    tahap = [
-        ("Observasi\ntanah", "profil, sampel,\nanalisis lab, PSS", "Modul 3, 7"),
-        ("Data\nlingkungan", "citra, DEM, SAR,\nLiDAR, iklim, geologi", "Modul 2, 4, 5, 6"),
-        ("Prediksi\nspasial", "model statistik/\nmachine learning", "Modul 8"),
-        ("Evaluasi", "validasi dan\nketidakpastian", "Modul 8"),
-        ("Informasi\ntanah spasial", "peta kelas/sifat\ntanah + ketidakpastian", "Modul 8"),
-        ("Interpretasi dan\nkeputusan", "penalaran pedologis,\npengelolaan lahan", "Modul 6"),
-    ]
-    warna = [WARNA["tanah"], WARNA["teal"], WARNA["navy"], WARNA["ungu"], WARNA["hijau"], WARNA["oranye"]]
-    w, jarak = 14.2, 16.9
-    for i, (judul, isi, modul) in enumerate(tahap):
-        x = 1 + i * jarak
-        kotak(ax, x, 17, w, 15, isi=WARNA["putih"], warna=warna[i], lw=1.5, r=1.0)
-        nomor(ax, x + w / 2, 32, i + 1, warna=warna[i], r=1.8, ukuran=10)
-        ax.text(x + w / 2, 26.6, judul, ha="center", va="center", fontsize=9.5, fontweight="bold", color=warna[i], linespacing=1.1)
-        ax.text(x + w / 2, 20.6, isi, ha="center", va="center", fontsize=7.9, linespacing=1.15)
-        kotak(ax, x + 1.5, 10.5, w - 3, 4.2, modul, isi=WARNA["latar"], warna=WARNA["abu"], ukuran=8, lw=0.6, r=0.8)
-        if i < 5:
-            panah(ax, x + w + 0.2, 24.5, x + jarak - 0.2, 24.5, warna=WARNA["navy"], lw=1.4)
-    ax.annotate("", xy=(1 + w / 2, 10.3), xytext=(1 + 3 * jarak + w / 2, 10.3),
-                arrowprops=dict(arrowstyle="-|>", color=WARNA["abu"], lw=1.1, ls="--",
-                                connectionstyle="arc,angleA=-90,angleB=-90,armA=14,armB=14,rad=4"))
-    ax.text(1 + 1.5 * jarak + w / 2, 6.9, "umpan balik: evaluasi dapat menunjukkan perlunya observasi tambahan",
-            ha="center", va="top", fontsize=8, style="italic", color=WARNA["abu"])
-    simpan(fig, MODUL, "M1-G08_alur-kerja-dsm.png")
-
-
-# ---------------------------------------------------------------- Gambar 1.9
-def g09_peta_lokasi_bompon():
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    minx, maxx, miny, maxy = batas.GetEnvelope()
-    fig = plt.figure(figsize=(8.6, 8.8))
-    ax = fig.add_axes([0.02, 0.04, 0.56, 0.92])
-    ax.set_xlim(minx - 260, maxx + 260)
-    ax.set_ylim(miny - 160, maxy + 160)
-    ax.set_aspect("equal")
-
-    desa = gaya.baca_layer("rbi_desa_magelang")
-    for atr, g in desa:
-        gaya.gambar_poligon(ax, g, fc="#F7F7F2", ec="#9AA1AA", lw=0.8, ls=(0, (5, 2, 1, 2)), zorder=1)
-    geser_dusun = {"Salakan": (-70, -60)}
-    for atr, g in gaya.baca_layer("batas_dusun"):
-        gaya.gambar_poligon(ax, g, fc="#FBF6EC", ec="#B9A88E", lw=0.6, zorder=2)
-        p = g.PointOnSurface()
-        dx, dy = geser_dusun.get(atr["dusun"], (0, 0))
-        ax.text(p.GetX() + dx, p.GetY() + dy, atr["dusun"], ha="center", va="center", fontsize=7.6, color="#5B4A36", zorder=7)
-    for atr, g in gaya.baca_layer("jalan"):
-        gaya.gambar_garis(ax, g, color="#C9A27E", lw=0.7 if atr["kelas"] != "Roda 4" else 1.1, zorder=3)
-    for atr, g in gaya.baca_layer("sungai"):
-        perenial = "perenial" in atr["jenis"]
-        gaya.gambar_garis(ax, g, color=WARNA["biru"], lw=1.8 if perenial else 0.9, ls="-" if perenial else (0, (4, 1.5)), zorder=4)
-    gaya.gambar_poligon(ax, batas, fc="none", ec=WARNA["navy"], lw=2.2, zorder=6)
-    for atr, g in desa:
-        if g.Intersects(batas):
-            irisan = g.Intersection(batas)
-            p = irisan.PointOnSurface()
-            dx, dy = {"Margoyoso": (-330, 260), "Wonogiri": (0, 260)}.get(atr["desa"].title(), (60, -250))
-            ax.text(p.GetX() + dx, p.GetY() + dy, f"Desa {atr['desa'].title()}",
-                    ha="center", fontsize=8.5, style="italic", fontweight="bold", color=WARNA["abu"], zorder=7)
-    gaya.grid_utm(ax, 500)
-    gaya.panah_utara(ax, 0.92, 0.88)
-    gaya.skala_batang(ax, maxx - 520, miny - 110, 500, "500 m", tinggi=22)
-
-    # inset lokasi
-    ins = fig.add_axes([0.62, 0.58, 0.36, 0.36])
-    kec_warna = {"Kajoran": "#D6E4F0", "Salaman": "#E8DCC8"}
-    for atr, g in desa:
-        gaya.gambar_poligon(ins, g, fc=kec_warna.get(atr["kecamatan"], "#F1F1F1"), ec="white", lw=0.3)
-    gaya.gambar_poligon(ins, batas, fc=WARNA["merah"], ec=WARNA["merah"], lw=1.2, zorder=5)
-    for kec, (dx, dy) in (("Kajoran", (-3500, 2500)), ("Salaman", (2200, -3500))):
-        xs = [g.Centroid().GetX() for a, g in desa if a["kecamatan"] == kec]
-        ys = [g.Centroid().GetY() for a, g in desa if a["kecamatan"] == kec]
-        ins.text(np.mean(xs) + dx * 0.1, np.mean(ys) + dy * 0.1, f"Kec. {kec}", fontsize=8, ha="center", fontweight="bold", color=WARNA["navy"])
-    ins.set_aspect("equal")
-    ins.autoscale_view()
-    ins.set_xticks([]), ins.set_yticks([])
-    for s in ins.spines.values():
-        s.set_visible(True)
-        s.set_color(WARNA["abu"])
-    ins.set_title("Sebagian Kabupaten Magelang\n(batas desa RBI 1:25.000)", fontsize=8.5, fontweight="normal", color=WARNA["teks"])
-
-    # legenda
-    from matplotlib.lines import Line2D
-    from matplotlib.patches import Patch
-
-    unsur = [
-        Line2D([], [], color=WARNA["navy"], lw=2.2, label="Batas Sub-DAS Bompon"),
-        Patch(fc="#FBF6EC", ec="#B9A88E", label="Batas dusun"),
-        Line2D([], [], color="#9AA1AA", lw=0.8, ls=(0, (5, 2, 1, 2)), label="Batas desa (RBI)"),
-        Line2D([], [], color=WARNA["biru"], lw=1.8, label="Sungai perenial"),
-        Line2D([], [], color=WARNA["biru"], lw=0.9, ls=(0, (4, 1.5)), label="Sungai intermiten"),
-        Line2D([], [], color="#C9A27E", lw=1.1, label="Jalan"),
-        Patch(fc=WARNA["merah"], ec=WARNA["merah"], label="Lokasi Sub-DAS (inset)"),
-    ]
-    fig.legend(handles=unsur, loc="upper left", bbox_to_anchor=(0.62, 0.50), fontsize=8.8, title="Keterangan",
-               title_fontproperties={"weight": "bold", "size": 9.5}, alignment="left")
-    fig.text(0.62, 0.13, "Sistem koordinat: WGS 84 / UTM zona 49S\n(EPSG:32749)\nLuas Sub-DAS: 294,71 ha",
-             fontsize=8.3, color=WARNA["abu"], va="bottom")
-    simpan(fig, MODUL, "M1-G09_peta-lokasi-subdas-bompon.png")
+    simpan(fig, MODUL, "M1-G06_siklus-pertanian-presisi.png")
 
 
 if __name__ == "__main__":
@@ -590,8 +478,9 @@ if __name__ == "__main__":
     g02_sensor_pasif_aktif()
     g03_spektrum_elektromagnetik()
     g04_respons_spektral()
-    g05_empat_resolusi()
-    g06_scorpan()
-    g07_siklus_pertanian_presisi()
-    g08_alur_kerja_dsm()
-    g09_peta_lokasi_bompon()
+    t01a_resolusi_spasial()
+    t01b_resolusi_spektral()
+    t01c_resolusi_radiometrik()
+    t01d_resolusi_temporal()
+    g05_scorpan()
+    g06_siklus_pertanian_presisi()

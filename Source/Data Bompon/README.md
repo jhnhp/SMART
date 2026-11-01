@@ -10,8 +10,14 @@ Data Bompon/
 │   ├── titik_sampel_rencana.csv    ← 50 titik rencana + atribut satuan lahan
 │   ├── titik_sampel_lapangan.csv   ← posisi GPS aktual pengambilan sampel (Feb 2025)
 │   └── titik_survei.csv            ← titik survei pendahuluan (Feb 2025)
+├── terbuka/                        ← potongan data terbuka untuk wilayah kajian (lihat bagian "Data terbuka")
+│   ├── sentinel2_l2a_20250721_10m.tif
+│   ├── sentinel2_l2a_20250721_scl_10m.tif
+│   ├── copdem_glo30_30m.tif
+│   └── metadata.json
 ├── skrip/
-│   └── rapikan_data_bompon.py      ← membuat ulang bompon.gpkg dan tabel/ dari mentah/
+│   ├── rapikan_data_bompon.py      ← membuat ulang bompon.gpkg dan tabel/ dari mentah/
+│   └── unduh_data_terbuka.py       ← mengunduh ulang isi terbuka/
 └── mentah/                         ← data asli (struktur folder asli dipertahankan)
 ```
 
@@ -102,6 +108,17 @@ Tesis Fatmawati (2026), `Source/527460.pdf`, adalah sumber utama untuk menelusur
 - **Wilayah administratif.** Tesis menyebut Desa Wonogiri dan Kwaderan (Kecamatan Kajoran) serta Desa Margoyoso (Kecamatan Salaman), sesuai dengan hasil tumpang susun RBI di atas.
 
 Hasil laboratorium dilaporkan dalam tesis berupa ringkasan statistik, sedangkan tabel data per titik tidak tersedia di folder ini. DTM LiDAR, foto udara asli, dan peta material permukaan juga tidak tersedia. Luas per bentuklahan pada `bentuklahan` sedikit berbeda dari tabel Sambodo (2021), sehingga versi datanya perlu dikonfirmasi.
+
+## Data terbuka
+
+Isi folder `terbuka/` diunduh dengan `skrip/unduh_data_terbuka.py`. Skrip itu hanya membaca jendela wilayah kajian dari berkas Cloud-Optimized GeoTIFF, lalu menyelaraskannya ke grid acuan Modul 2 (penyangga 200 m, EPSG:32749).
+
+- **Sentinel-2 L2A**, adegan `S2B_49MCM_20250721_0_L2A` (21 Juli 2025, petak 49MCM, *processing baseline* 05.11), dari katalog Earth Search (Element 84). Isinya 10 kanal reflektansi permukaan (float32, grid 10 m; kanal 20 m di-*resample* bilinear) dan SCL.
+  - Pada katalog ini *offset* BOA sudah diterapkan (`earthsearch:boa_offset_applied = true`), sehingga reflektansi = DN × 0,0001.
+  - Di dalam Sub-DAS, SCL mencatat 98,6% vegetasi dan tidak ada awan.
+  - Atribusi wajib: *Contains modified Copernicus Sentinel data 2025*.
+- **Copernicus DEM GLO-30** (DOI 10.5270/ESA-c5d3d65), diproyeksikan ke grid 30 m.
+  - DEM ini merupakan model permukaan (termasuk tajuk dan bangunan), bukan model medan.
 
 ## Rujukan
 

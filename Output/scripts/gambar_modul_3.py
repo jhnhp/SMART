@@ -2,26 +2,20 @@
 
 Jalankan: python3 Output/scripts/gambar_modul_3.py
 Keluaran: Output/assets/modul-3/M3-Gxx_*.png
-Gambar data memakai bompon.gpkg, folder terbuka/ (Sentinel-2, Copernicus DEM), dan foto udara
-data proyek; angka tumpang susun dihitung ulang melalui analisis_modul_3.py.
+Semua gambar bersifat konseptual; Gambar 3.5 memakai data sintetis.
 """
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 from matplotlib.patches import Circle, Patch, PathPatch, Polygon, Rectangle
 from matplotlib.path import Path
 from osgeo import gdal
+from scipy import ndimage
 
 import gaya
-import analisis_modul_3 as analisis
-from gaya import WARNA, kanvas, kotak, panah, simpan
+from gaya import WARNA, kanvas, kotak, nomor, panah, simpan
 
 gdal.UseExceptions()
 MODUL = "modul-3"
-TERBUKA = os.path.join(gaya.AKAR, "Source", "Data Bompon", "terbuka")
-FOTO_UDARA = os.path.join(gaya.AKAR, "Source", "Data Bompon", "mentah", "SHP Bompon", "das Bompon1.tif")
 
 
 def gumpalan(cx, cy, r, seed, n=14, kasar=0.18):
@@ -121,192 +115,176 @@ def g02_hierarki_taksonomi():
 
 
 # ---------------------------------------------------------------- Gambar 3.3
-def g03_toposekuen_bompon():
-    fig, ax = kanvas(10, 4.6, (0, 100), (-10, 44))
-    x = np.linspace(0, 100, 600)
-    z = np.interp(x, [0, 10, 14, 30, 55, 70, 82, 96, 97.5, 100], [32, 32, 31, 25, 12.5, 7, 4.2, 3.0, 1.0, 1.2])
-    z = np.convolve(np.pad(z, 15, mode="edge"), np.ones(31) / 31, mode="valid")
-    satuan = [("Interfluve", 0, 12), ("Lereng Atas Perbukitan", 12, 30), ("Lereng Tengah Perbukitan", 30, 55),
-              ("Lereng Bawah Perbukitan", 55, 70), ("Lereng Kaki Koluvial", 70, 82), ("Dataran Koluvial", 82, 96)]
-    ax.fill_between(x, -6, z - 3.5, color="#C9B8A0", zorder=1)
-    ax.text(40, 4.5, "bahan induk: breksi teralterasi", fontsize=8, color="#6B5B45", style="italic")
-    kol = (x > 66) & (x < 97)
-    ax.fill_between(x[kol], np.maximum(z[kol] - 3.5, -1.5) - np.interp(x[kol], [66, 82, 97], [0, 2.8, 3.2]), z[kol] - 0.2,
-                    color="#9CC5A1", alpha=0.9, zorder=2)
-    ax.text(84, -3.6, "endapan koluvial", fontsize=8, color="#2F6B50", ha="center", style="italic")
-    ax.fill_between(x, z - 3.5, z, color="#D9B48F", zorder=1.5)
-    for nama, a, b in satuan:
-        sel = (x >= a) & (x <= b)
-        ax.plot(x[sel], z[sel], color=gaya.WARNA_BENTUKLAHAN[nama], lw=5, solid_capstyle="butt", zorder=3)
-        xm = (a + b) / 2
-        zm = np.interp(xm, x, z)
-        ax.plot([a, a], [np.interp(a, x, z) - 3.5, 41], color=WARNA["abu_muda"], lw=0.8, ls=":", zorder=0)
-        ax.text(xm, 41.5, nama.replace(" Perbukitan", "\nPerbukitan").replace(" Koluvial", "\nKoluvial"),
-                ha="center", va="bottom", fontsize=7.8, color=WARNA["teks"], linespacing=1.05)
-    ax.add_patch(Rectangle((96.5, -0.5), 2, 2.2, fc=WARNA["biru"], ec="none", zorder=4))
-    ax.text(97.5, -2.6, "sungai", fontsize=7.5, ha="center", color=WARNA["biru"])
-    proses = [(0, 30, "erosi dominan", WARNA["merah"]), (30, 70, "transportasi", WARNA["oranye"]), (70, 96, "deposisi", WARNA["teal"])]
-    for a, b, lbl, w in proses:
-        ax.annotate("", xy=(b - 1, 37.2), xytext=(a + 1, 37.2), arrowprops=dict(arrowstyle="-|>", color=w, lw=1.6))
-        ax.text((a + b) / 2, 37.9, lbl, ha="center", fontsize=8.5, color=w, fontweight="bold")
-    pl = [(6, 32.5, "agroforestri"), (42, 21.5, "agroforestri, permukiman"), (89, 6.5, "sawah")]
-    for xx, zz, t in pl:
-        ax.text(xx, zz + 1.3, t, fontsize=7.8, ha="center", color=WARNA["hijau"], style="italic")
-    ax.text(0, -8.5, "Penggunaan lahan dominan diringkas dari tumpang susun data proyek; penampang tidak berskala.",
-            fontsize=7.8, color=WARNA["abu"], style="italic")
-    simpan(fig, MODUL, "M3-G03_toposekuen-subdas-bompon.png")
+SATUAN_LERENG = [
+    ("Interfluve", "proses pedologis oleh gerakan air\nvertikal di bawah permukaan"),
+    ("Lereng rembesan", "eluviasi mekanis dan kimiawi oleh\naliran air lateral bawah permukaan"),
+    ("Lereng rayapan cembung", "rayapan tanah"),
+    ("Muka jatuhan", "jatuhan; bahan induk tersingkap"),
+    ("Lereng tengah transportasional", "pengangkutan material ke bawah lereng\n(aliran, nendatan, longsoran, rayapan)"),
+    ("Lereng kaki koluvial", "pengendapan kembali material\nkoluvial dari lereng di atasnya"),
+    ("Kaki lereng aluvial", "pengendapan material aluvial\nyang dibawa sungai dari hulu"),
+    ("Dinding saluran", "korasi (pengikisan) oleh aliran sungai"),
+    ("Dasar saluran", "pengangkutan material searah\naliran sungai"),
+]
+
+
+def profil_sembilan_satuan():
+    """Profil lereng skematis: daftar (x, y) per satuan."""
+    seg = []
+    x = np.linspace(0, 9, 20); seg.append((x, np.full_like(x, 60.0)))
+    x = np.linspace(9, 22, 30); seg.append((x, 60 - (x - 9) * 2.5 / 13))
+    x = np.linspace(22, 31, 30); seg.append((x, 57.5 - (x - 22) ** 2 * 8.5 / 81))
+    x = np.linspace(31, 34, 10); seg.append((x, 49 - (x - 31) * 12 / 3))
+    x = np.linspace(34, 56, 30); seg.append((x, 37 - (x - 34) * 20 / 22))
+    x = np.linspace(56, 71, 30); seg.append((x, 8.5 + (71 - x) ** 2 * 8.5 / 225))
+    x = np.linspace(71, 86, 20); seg.append((x, 8.5 - (x - 71) * 1.0 / 15))
+    x = np.linspace(86, 88.5, 10); seg.append((x, 7.5 - (x - 86) * 5 / 2.5))
+    x = np.linspace(88.5, 100, 20); seg.append((x, np.full_like(x, 2.5)))
+    return seg
+
+
+def g03_model_sembilan_satuan():
+    fig, ax = kanvas(10, 7.0, (0, 100), (-52, 70))
+    seg = profil_sembilan_satuan()
+    xs = np.concatenate([s[0] for s in seg])
+    ys = np.concatenate([s[1] for s in seg])
+    ax.fill_between(xs, -4, ys, color="#E6D3B8", zorder=1)
+    ax.fill_between(xs, -4, ys - 3.0, color="#CDB89A", zorder=1.2)
+    ax.add_patch(Rectangle((88.5, -1.0), 11.5, 3.5, fc=WARNA["biru"], alpha=0.55, ec="none", zorder=2))
+    warna = ["#7A4E2D", "#9B6235", "#B5763F", "#6B7280", "#D9A35F", "#9CC5A1", "#5E9E8A", "#3B82C4", "#1F3A5F"]
+    for i, ((x, y), w) in enumerate(zip(seg, warna)):
+        ax.plot(x, y, color=w, lw=4.5, solid_capstyle="butt", zorder=3)
+        xm = x[len(x) // 2]
+        ym = y[len(y) // 2]
+        dx = {3: -3.6, 7: -2.8, 8: 1.5}.get(i, 0.0)
+        nomor(ax, xm + dx, ym + 5.0, i + 1, warna=w, r=1.9, ukuran=9)
+    ax.text(94.2, -2.4, "sungai", fontsize=7.5, ha="center", color="white", fontweight="bold", zorder=4)
+    for i, (nama, proses) in enumerate(SATUAN_LERENG):
+        kol, bar = divmod(i, 5)
+        x0 = 1 + kol * 50
+        y0 = -9.0 - bar * 8.6
+        nomor(ax, x0 + 1.6, y0, i + 1, warna=warna[i], r=1.6, ukuran=8)
+        ax.text(x0 + 4.2, y0 + 0.4, nama, fontsize=8.6, fontweight="bold", va="center", color=WARNA["teks"])
+        ax.text(x0 + 4.2, y0 - 1.6, proses, fontsize=7.8, va="top", color=WARNA["abu"], linespacing=1.1)
+    simpan(fig, MODUL, "M3-G03_model-sembilan-satuan-permukaan-lahan.png")
 
 
 # ---------------------------------------------------------------- Gambar 3.4
-def regang(a, m):
-    lo, hi = np.percentile(a[m], [2, 98])
-    return np.clip((a - lo) / (hi - lo), 0, 1)
-
-
-def g04_data_penginderaan_jauh():
-    s2 = gdal.Open(os.path.join(TERBUKA, "sentinel2_l2a_20250721_10m.tif"))
-    kanal = {s2.GetRasterBand(i).GetDescription(): s2.GetRasterBand(i).ReadAsArray() for i in range(1, s2.RasterCount + 1)}
-    gt = s2.GetGeoTransform()
-    ext = (gt[0], gt[0] + gt[1] * s2.RasterXSize, gt[3] + gt[5] * s2.RasterYSize, gt[3])
-    m = analisis.topeng_batas(s2.RasterXSize, s2.RasterYSize, gt)
-    asli = np.dstack([regang(kanal[k], m) for k in ("B04", "B03", "B02")]) ** 0.8
-    semu = np.dstack([regang(kanal[k], m) for k in ("B08", "B04", "B03")])
-    dem = gdal.Open(os.path.join(TERBUKA, "copdem_glo30_30m.tif"))
-    bayang = gdal.DEMProcessing("", dem, "hillshade", format="MEM", azimuth=315, altitude=45, computeEdges=True).ReadAsArray()
-    gd = dem.GetGeoTransform()
-    ext_d = (gd[0], gd[0] + gd[1] * dem.RasterXSize, gd[3] + gd[5] * dem.RasterYSize, gd[3])
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    fig, axs = plt.subplots(1, 3, figsize=(10, 6.4))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.92, bottom=0.04, wspace=0.04)
-    judul = ["(a) Sentinel-2 komposit warna asli\n(B4-B3-B2), 10 m", "(b) Sentinel-2 komposit inframerah\nsemu (B8-B4-B3), 10 m",
-             "(c) Bayangan medan Copernicus DEM 30 m\ndan batas bentuklahan"]
-    axs[0].imshow(asli, extent=ext, interpolation="nearest")
-    axs[1].imshow(semu, extent=ext, interpolation="nearest")
-    axs[2].imshow(bayang, extent=ext_d, cmap="gray", interpolation="bilinear")
-    for atr, g in gaya.baca_layer("bentuklahan"):
-        gaya.gambar_poligon(axs[2], g, fc="none", ec=gaya.WARNA_BENTUKLAHAN[atr["bentuklahan"]], lw=0.9)
-    for ax, t in zip(axs, judul):
-        gaya.gambar_poligon(ax, batas, fc="none", ec="#FFD54A", lw=1.4)
-        ax.set_xlim(ext[0], ext[1])
-        ax.set_ylim(ext[2], ext[3])
-        ax.set_xticks([]), ax.set_yticks([])
-        ax.set_title(t, fontsize=9.5)
-    gaya.skala_batang(axs[0], ext[0] + 60, ext[2] + 70, 500, "500 m", tinggi=25)
-    for s in axs[0].texts[-2:]:
-        s.set_color("white")
-    simpan(fig, MODUL, "M3-G04_data-penginderaan-jauh-subdas-bompon.png")
-
-
-# ---------------------------------------------------------------- Gambar 3.5
-def g05_unsur_interpretasi_foto_udara():
-    lokasi = [
-        ("(a) Sawah di dataran koluvial", 397400, 9164540, "pola petak teratur mengikuti kontur;\nrona cerah pada petak bera"),
-        ("(b) Agroforestri di lereng perbukitan", 396860, 9163800, "tekstur kasar dari tajuk berlapis;\nrona gelap; tanah tidak tampak"),
-        ("(c) Permukiman", 396760, 9164730, "pola mengelompok; bentuk atap\npersegi; asosiasi dengan jalan"),
-        ("(d) Tegalan", 396420, 9165765, "pola baris bedengan; rona\nberagam sesuai fase tanaman"),
-    ]
-    fig, axs = plt.subplots(1, 4, figsize=(10, 3.6))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.86, bottom=0.17, wspace=0.05)
-    for ax, (judul, x, y, ket) in zip(axs, lokasi):
-        ds = gdal.Translate("", FOTO_UDARA, format="MEM", projWin=[x - 100, y + 100, x + 100, y - 100], bandList=[1, 2, 3],
-                            outputType=gdal.GDT_Byte, scaleParams=[[0, 255, 0, 255]], width=400, height=400)
-        ax.imshow(ds.ReadAsArray().transpose(1, 2, 0), extent=(x - 100, x + 100, y - 100, y + 100))
-        ax.set_xticks([]), ax.set_yticks([])
-        ax.set_title(judul, fontsize=9, loc="left")
-        ax.text(0.0, -0.05, ket, transform=ax.transAxes, fontsize=7.9, va="top", linespacing=1.15)
-        ax.add_patch(Rectangle((x - 90, y - 92), 50, 5, fc="white", ec="#1F2933", lw=0.6))
-        ax.text(x - 65, y - 84, "50 m", ha="center", fontsize=7.5, color="white", fontweight="bold")
-    simpan(fig, MODUL, "M3-G05_unsur-interpretasi-foto-udara.png")
-
-
-# ---------------------------------------------------------------- Gambar 3.6
-def g06_tumpang_susun_dan_generalisasi(stat, kode, tersaring):
-    lf, sl, pl, m, gt, ext = analisis.grid_lapisan()
-    kode_unik = np.unique(kode[kode > 0])
-    rng = np.random.default_rng(5)
-    palet = plt.get_cmap("tab20")(np.linspace(0, 1, 20))
-    warna = {k: palet[i % 20] * 0.85 + 0.15 * rng.random(4) for i, k in enumerate(rng.permutation(kode_unik))}
-
-    def rgb(a):
-        out = np.ones(a.shape + (3,))
-        for k, w in warna.items():
-            out[a == k] = w[:3]
-        return np.clip(out, 0, 1)
-
-    fig = plt.figure(figsize=(10, 6.2))
-    gs = fig.add_gridspec(1, 4, width_ratios=[1, 1, 0.42, 1.25], left=0.01, right=0.98, top=0.88, bottom=0.10, wspace=0.04)
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    ts, ga = stat["tumpang_susun"], stat["generalisasi_otomatis"]["akhir"]
-    pct_kecil = f"{ts['persen_poligon_kecil']:.1f}".replace(".", ",")
-    for j, (arr, judul) in enumerate(((kode, f"(a) Tumpang susun otomatis\n{ts['jumlah_poligon']:,} poligon; ".replace(",", ".")
-                                             + f"{pct_kecil}% < 0,4 ha"),
-                                      (tersaring, f"(b) Generalisasi otomatis\n{ga['jumlah_poligon']} poligon; "
-                                                  f"{ga['jumlah_kombinasi']} kombinasi"))):
-        ax = fig.add_subplot(gs[0, j])
-        ax.imshow(rgb(arr), extent=ext, interpolation="nearest")
-        gaya.gambar_poligon(ax, batas, fc="none", ec=WARNA["navy"], lw=1.0)
-        ax.set_xticks([]), ax.set_yticks([])
-        for s in ax.spines.values():
-            s.set_visible(False)
-        ax.set_title(judul, fontsize=9.5)
-    ax = fig.add_subplot(gs[0, 3])
-    sebelum = ga_l = stat["generalisasi_otomatis"]["lereng"]
-    kelas = list(gaya.WARNA_LERENG)
-    y = np.arange(len(kelas))
-    a = [sebelum["luas_kelas_ha_sebelum"].get(k, 0) for k in kelas]
-    b = [ga_l["luas_kelas_ha_sesudah"].get(k, 0) for k in kelas]
-    ax.barh(y + 0.2, a, height=0.38, color=[gaya.WARNA_LERENG[k] for k in kelas], ec="#555555", lw=0.5, label="sebelum")
-    ax.barh(y - 0.2, b, height=0.38, color="white", ec="#555555", lw=0.8, hatch="////", label="sesudah generalisasi")
-    for yy, v1, v2 in zip(y, a, b):
-        ax.text(v1 + 2, yy + 0.2, f"{v1:.1f}".replace(".", ","), va="center", fontsize=7.8)
-        ax.text(v2 + 2, yy - 0.2, f"{v2:.1f}".replace(".", ","), va="center", fontsize=7.8)
-    ax.set_yticks(y)
-    ax.set_yticklabels([k.replace("-", "–") for k in kelas], fontsize=8.5)
-    ax.invert_yaxis()
-    ax.set_xlabel("Luas (ha)", fontsize=8.5)
-    ax.tick_params(axis="x", labelsize=8)
-    ax.set_xlim(0, 150)
-    ax.legend(fontsize=8, loc="lower right")
-    ax.set_title(f"(c) Luas kelas lereng sebelum dan sesudah\ngeneralisasi ({ga_l['persen_piksel_berubah_kelas']:.1f}% piksel berubah kelas)".replace(".", ","),
-                 fontsize=9.5)
-    simpan(fig, MODUL, "M3-G06_tumpang-susun-dan-generalisasi-otomatis.png")
-
-
-# ---------------------------------------------------------------- Gambar 3.7
-def g07_skala_dan_mla():
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    minx, maxx, miny, maxy = batas.GetEnvelope()
-    fig, ax = plt.subplots(figsize=(8.6, 6.4))
-    gaya.gambar_poligon(ax, batas, fc="#F4F1E8", ec=WARNA["navy"], lw=1.6)
+def g04_mla_berbagai_skala():
+    fig, ax = plt.subplots(figsize=(8.8, 4.9))
+    ax.add_patch(Rectangle((0, 0), 1000, 1000, fc="#F4F1E8", ec=WARNA["navy"], lw=1.4))
+    for v in range(100, 1000, 100):
+        ax.plot([v, v], [0, 1000], color="white", lw=0.8)
+        ax.plot([0, 1000], [v, v], color="white", lw=0.8)
     skala = [(10000, WARNA["teal"]), (25000, WARNA["oranye"]), (50000, WARNA["merah"]), (100000, WARNA["ungu"])]
-    x0 = maxx + 250
-    y = maxy - 120
+    letak = {100000: (20, 20), 50000: (672, 20), 25000: (672, 356), 10000: (850, 356)}
     for sn, w in skala:
         mla = (sn / 1000) ** 2 / 250
         sisi = np.sqrt(mla * 1e4)
-        ax.add_patch(Rectangle((x0, y - sisi), sisi, sisi, fc=w, alpha=0.35, ec=w, lw=1.4))
-        lbl = f"1:{sn:,}".replace(",", ".")
-        ax.text(x0 + sisi + 40, y - sisi / 2, f"{lbl}\nMLA {mla:g} ha".replace(".", ",", 1) if False else f"{lbl}\nMLA {str(mla).replace('.', ',')} ha\n(sisi ±{sisi:.0f} m)",
-                va="center", fontsize=8.5, color=w)
-        cx, cy = (minx + maxx) / 2 - 120, maxy - 700 - skala.index((sn, w)) * 650
-        ax.add_patch(Rectangle((cx - sisi / 2, cy - sisi / 2), sisi, sisi, fc=w, alpha=0.55, ec=w, lw=1.0))
-        y -= sisi + 260
-    ax.text((minx + maxx) / 2, maxy + 70, "Sub-DAS Bompon (294,71 ha)", ha="center", fontsize=9.5, fontweight="bold", color=WARNA["navy"])
+        ax.add_patch(Rectangle(letak[sn], sisi, sisi, fc=w, alpha=0.55, ec=w, lw=1.2))
+    y = 950
+    for sn, w in skala:
+        mla = (sn / 1000) ** 2 / 250
+        sisi = np.sqrt(mla * 1e4)
+        jumlah = 100 / mla
+        teks = (f"1:{sn:,}".replace(",", ".") + f"  —  MLA {str(round(mla, 3)).replace('.', ',')} ha "
+                f"(sisi ±{sisi:.0f} m); {str(round(jumlah, 1)).replace('.0', '').replace('.', ',')} MLA per 100 ha")
+        ax.add_patch(Rectangle((1060, y - 32), 40, 40, fc=w, alpha=0.55, ec=w))
+        ax.text(1120, y - 12, teks, va="center", fontsize=8.8, color=WARNA["teks"])
+        y -= 90
+    ax.text(500, -60, "Kotak acuan 1 × 1 km (100 ha); garis bantu setiap 100 m", ha="center", fontsize=8.5, color=WARNA["abu"])
+    ax.set_xlim(-20, 2300)
+    ax.set_ylim(-100, 1020)
     ax.set_aspect("equal")
-    ax.set_xlim(minx - 150, x0 + 1300)
-    ax.set_ylim(miny - 240, maxy + 180)
     ax.axis("off")
-    gaya.skala_batang(ax, (minx + maxx) / 2 - 250, miny - 190, 500, "500 m", tinggi=22)
-    simpan(fig, MODUL, "M3-G07_skala-peta-dan-mla.png")
+    simpan(fig, MODUL, "M3-G04_mla-pada-berbagai-skala.png")
+
+
+# ---------------------------------------------------------------- Gambar 3.5
+def medan_sintetis(n=240, seed=7):
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:n, 0:n] / n
+    z = 60 * np.sin(2.2 * np.pi * xx + 0.6) * np.cos(1.4 * np.pi * yy) + 40 * yy
+    z += ndimage.gaussian_filter(rng.normal(0, 1, (n, n)), 12) * 220
+    mikro = ndimage.gaussian_filter(rng.normal(0, 1, (n, n)), 1.2) * 2.2   # relief mikro, mis. teras
+    return z, z + mikro
+
+
+def kelaskan(a, q):
+    return np.digitize(a, np.quantile(a, q)) + 1
+
+
+def hitung_patch(kode):
+    struktur = np.ones((3, 3), bool)
+    ukuran = []
+    for k in np.unique(kode):
+        lab, n = ndimage.label(kode == k, structure=struktur)
+        ukuran.extend(np.bincount(lab.ravel())[1:].tolist())
+    return np.array(ukuran)
+
+
+def saring_ulang(kode, ambang):
+    cur = kode.astype(np.int32)
+    drv = gdal.GetDriverByName("MEM")
+    for _ in range(50):
+        src = drv.Create("", cur.shape[1], cur.shape[0], 1, gdal.GDT_Int32)
+        src.GetRasterBand(1).WriteArray(cur)
+        dst = drv.Create("", cur.shape[1], cur.shape[0], 1, gdal.GDT_Int32)
+        gdal.SieveFilter(src.GetRasterBand(1), None, dst.GetRasterBand(1), ambang, 8)
+        nxt = dst.GetRasterBand(1).ReadAsArray()
+        if (nxt == cur).all():
+            break
+        cur = nxt
+    return cur
+
+
+def g05_ilustrasi_tumpang_susun():
+    z_halus, z_rinci = medan_sintetis()
+    bentuk = kelaskan(ndimage.gaussian_filter(z_halus, 6), [0.25, 0.5, 0.75])
+    gy, gx = np.gradient(z_rinci)
+    lereng = kelaskan(np.hypot(gx, gy), [0.3, 0.6, 0.85])
+    kode = bentuk * 10 + lereng
+    ambang = 150
+    u0 = hitung_patch(kode)
+    umum = saring_ulang(kode, ambang)
+    u1 = hitung_patch(umum)
+    rng = np.random.default_rng(3)
+    palet = plt.get_cmap("tab20")(np.linspace(0, 1, 20))[:, :3]
+    unik = np.unique(kode)
+    peta = {k: palet[i % 20] * 0.85 + 0.15 * rng.random(3) for i, k in enumerate(rng.permutation(unik))}
+
+    def rgb(a):
+        out = np.ones(a.shape + (3,))
+        for k, w in peta.items():
+            out[a == k] = np.clip(w, 0, 1)
+        return out
+
+    fig, axs = plt.subplots(2, 2, figsize=(7.0, 7.9))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.94, bottom=0.035, wspace=0.05, hspace=0.14)
+    axs = axs.ravel()
+    coklat = plt.get_cmap("YlOrBr")
+    judul = [
+        "(a) Satuan bentuklahan\n(4 kelas, batas halus)",
+        "(b) Kelas lereng dari DEM\nresolusi tinggi (4 kelas)",
+        f"(c) Tumpang susun (a) dan (b)\n{len(u0):,} poligon; {np.mean(u0 < ambang) * 100:.0f}% < MLA".replace(",", "."),
+        f"(d) Generalisasi otomatis\n{len(u1)} poligon; semua ≥ MLA",
+    ]
+    axs[0].imshow(bentuk, cmap=coklat, vmin=0, vmax=5, interpolation="nearest")
+    axs[1].imshow(lereng, cmap="RdYlGn_r", vmin=0.5, vmax=4.5, interpolation="nearest")
+    axs[2].imshow(rgb(kode), interpolation="nearest")
+    axs[3].imshow(rgb(umum), interpolation="nearest")
+    for a, t in zip(axs, judul):
+        a.set_xticks([]), a.set_yticks([])
+        a.set_title(t, fontsize=10.5)
+    fig.text(0.5, 0.008, "Data sintetis untuk ilustrasi; MLA ditetapkan 150 piksel", ha="center", fontsize=9,
+             style="italic", color=WARNA["abu"])
+    simpan(fig, MODUL, "M3-G05_ilustrasi-tumpang-susun-dan-generalisasi.png")
 
 
 if __name__ == "__main__":
     gaya.atur()
-    stat, kode, tersaring = analisis.main()
     g01_jenis_satuan_peta()
     g02_hierarki_taksonomi()
-    g03_toposekuen_bompon()
-    g04_data_penginderaan_jauh()
-    g05_unsur_interpretasi_foto_udara()
-    g06_tumpang_susun_dan_generalisasi(stat, kode, tersaring)
-    g07_skala_dan_mla()
+    g03_model_sembilan_satuan()
+    g04_mla_berbagai_skala()
+    g05_ilustrasi_tumpang_susun()

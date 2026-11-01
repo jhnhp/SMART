@@ -1,344 +1,280 @@
-"""Gambar dan analisis Modul 4 — Remote Sensing untuk Estimasi Soil Properties.
+"""Gambar Modul 4 — Remote Sensing untuk Estimasi Soil Properties.
 
 Jalankan: python3 Output/scripts/gambar_modul_4.py
-Keluaran:
-- Output/assets/modul-4/M4-G01_fitur-serapan-spektral-tanah.png
-- Output/assets/modul-4/M4-G02_faktor-pengganggu-estimasi-tanah.png
-- Output/assets/modul-4/M4-G03_peta-indeks-spektral-bompon.png
-- Output/assets/modul-4/M4-G04_indeks-dan-fraksi-tanah-bompon.png
-- Output/assets/modul-4/statistik_modul_4.json
+Keluaran: Output/assets/modul-4/M4-Gxx_*.png
+Semua gambar bersifat konseptual; kurva pada Gambar 4.2 adalah ilustrasi skematis, bukan data terukur.
 """
-import json
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Polygon, Rectangle
-from osgeo import gdal, ogr
+from matplotlib.ticker import FuncFormatter, MultipleLocator
+from scipy.interpolate import PchipInterpolator
 
 import gaya
-from gaya import WARNA, kanvas, kotak, panah, simpan
-
-gdal.UseExceptions()
-ogr.UseExceptions()
+from gaya import WARNA, kanvas, kotak, nomor, panah, simpan
 
 MODUL = "modul-4"
-TERBUKA = os.path.join(gaya.AKAR, "Source", "Data Bompon", "terbuka")
-KELUAR_JSON = os.path.join(gaya.ASET, MODUL, "statistik_modul_4.json")
+KOMA = FuncFormatter(lambda v, _: f"{v:.1f}".replace(".", ","))
 
-
-def baca_sentinel2():
-    ds = gdal.Open(os.path.join(TERBUKA, "sentinel2_l2a_20250721_10m.tif"))
-    gt = ds.GetGeoTransform()
-    ext = (gt[0], gt[0] + gt[1] * ds.RasterXSize, gt[3] + gt[5] * ds.RasterYSize, gt[3])
-    b = {ds.GetRasterBand(i).GetDescription(): ds.GetRasterBand(i).ReadAsArray().astype(np.float32)
-         for i in range(1, ds.RasterCount + 1)}
-    # Mask batas Sub-DAS pada grid 10 m
-    m_ds = gdal.GetDriverByName("MEM").Create("", ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
-    m_ds.SetGeoTransform(gt)
-    src = ogr.Open(gaya.GPKG)
-    gdal.RasterizeLayer(m_ds, [1], src.GetLayer("batas_subdas"), burn_values=[1])
-    mask = m_ds.ReadAsArray().astype(bool)
-
-    # Rasterisasi penggunaan lahan pada grid 10 m
-    pl_ds = gdal.GetDriverByName("MEM").Create("", ds.RasterXSize, ds.RasterYSize, 1, gdal.GDT_Byte)
-    pl_ds.SetGeoTransform(gt)
-    lyr = src.GetLayer("penggunaan_lahan")
-    kelas_pl = list(gaya.WARNA_PENGGUNAAN)
-    for idx, nama in enumerate(kelas_pl, start=1):
-        lyr.SetAttributeFilter(f"penggunaan_lahan = '{nama}'")
-        gdal.RasterizeLayer(pl_ds, [1], lyr, burn_values=[idx])
-    pl = pl_ds.ReadAsArray()
-    return b, mask, pl, gt, ext
-
-
-def hitung_indeks(b):
-    eps = 1e-6
-    bi = np.sqrt((b["B04"] ** 2 + b["B03"] ** 2 + b["B02"] ** 2) / 3.0)
-    ci = b["B11"] / np.maximum(b["B12"], eps)
-    ndwi = (b["B08"] - b["B11"]) / np.maximum(b["B08"] + b["B11"], eps)
-    savi = 1.5 * (b["B08"] - b["B04"]) / np.maximum(b["B08"] + b["B04"] + 0.5, eps)
-    ndvi = (b["B08"] - b["B04"]) / np.maximum(b["B08"] + b["B04"], eps)
-    ri = (b["B04"] ** 2) / np.maximum(b["B02"] * (b["B03"] ** 3), eps)
-    return {"BI": bi, "CI": ci, "NDWI": ndwi, "SAVI": savi, "NDVI": ndvi, "RI": ri}
-
-
-def simpan_statistik(indeks, mask, pl, gt):
-    kelas_pl = list(gaya.WARNA_PENGGUNAAN)
-    stat = {"keseluruhan_subdas": {}, "per_penggunaan_lahan": {}, "sampel_50_titik": {}}
-    for k, arr in indeks.items():
-        val = arr[mask]
-        stat["keseluruhan_subdas"][k] = {
-            "min": round(float(np.min(val)), 3),
-            "p05": round(float(np.percentile(val, 5)), 3),
-            "median": round(float(np.median(val)), 3),
-            "mean": round(float(np.mean(val)), 3),
-            "p95": round(float(np.percentile(val, 95)), 3),
-            "max": round(float(np.max(val)), 3),
-            "std": round(float(np.std(val)), 3),
-        }
-    for idx, nama in enumerate(kelas_pl, start=1):
-        sel = mask & (pl == idx)
-        stat["per_penggunaan_lahan"][nama] = {
-            k: {
-                "median": round(float(np.median(arr[sel])), 3),
-                "mean": round(float(np.mean(arr[sel])), 3),
-                "std": round(float(np.std(arr[sel])), 3),
-                "q25": round(float(np.percentile(arr[sel], 25)), 3),
-                "q75": round(float(np.percentile(arr[sel], 75)), 3),
-            }
-            for k, arr in indeks.items()
-        }
-    # Ekstrak pada 50 titik sampel rencana
-    titik = gaya.baca_layer("titik_sampel_rencana")
-    sampel_val = {k: [] for k in indeks}
-    for atr, g in titik:
-        col = int((g.GetX() - gt[0]) / gt[1])
-        row = int((g.GetY() - gt[3]) / gt[5])
-        for k, arr in indeks.items():
-            sampel_val[k].append(float(arr[row, col]))
-    for k, v in sampel_val.items():
-        v = np.array(v)
-        stat["sampel_50_titik"][k] = {
-            "min": round(float(v.min()), 3),
-            "median": round(float(np.median(v)), 3),
-            "mean": round(float(v.mean()), 3),
-            "max": round(float(v.max()), 3),
-            "std": round(float(v.std()), 3),
-        }
-    os.makedirs(os.path.dirname(KELUAR_JSON), exist_ok=True)
-    with open(KELUAR_JSON, "w", encoding="utf-8") as fh:
-        json.dump(stat, fh, indent=2, ensure_ascii=False)
-    return stat
+# Kanal Sentinel-2 MSI (batas bawah–atas, µm) dari panjang gelombang pusat dan lebar kanal (Drusch et al., 2012)
+KANAL_S2 = [("B2", 0.4575, 0.5225), ("B3", 0.5425, 0.5775), ("B4", 0.650, 0.680), ("B5", 0.6975, 0.7125),
+            ("B6", 0.7325, 0.7475), ("B7", 0.773, 0.793), ("B8", 0.7845, 0.8995), ("B11", 1.565, 1.655),
+            ("B12", 2.100, 2.280)]
+SERAPAN_ATMOSFER = [(1.35, 1.45), (1.80, 1.95)]
 
 
 # ---------------------------------------------------------------- Gambar 4.1
-def g01_fitur_serapan_tanah():
-    w = np.linspace(0.4, 2.5, 700)
-    # Kurva dasar reflektansi tanah (%)
-    dasar = 12 + 28 * (1 - np.exp(-(w - 0.38) / 0.65))
-    air = 10 * np.exp(-((w - 1.42) / 0.055) ** 2) + 15 * np.exp(-((w - 1.92) / 0.065) ** 2)
-    lempung_oh = 9.5 * np.exp(-((w - 2.205) / 0.042) ** 2) + 2.5 * np.exp(-((w - 1.41) / 0.03) ** 2)
-    besi = 6.5 * np.exp(-((w - 0.48) / 0.08) ** 2) + 5.5 * np.exp(-((w - 0.88) / 0.09) ** 2)
+def g01_jalur_estimasi():
+    fig, ax = kanvas(10, 5.6, (0, 104), (0, 58))
+    w, h = 17.5, 9.0
 
-    k_pasir_kering = dasar + 4.5 - 0.45 * air - 0.2 * lempung_oh
-    k_lempung_fe = dasar - 3.5 - 0.75 * air - 1.15 * lempung_oh - besi
-    k_organik_tinggi = (dasar * 0.50) - 4 * np.exp(-((w - 0.65) / 0.25) ** 2) - 0.7 * air - 0.6 * lempung_oh
-    k_lempung_lembap = (k_lempung_fe * 0.56) - 0.65 * air
+    def node(x, y, teks, isi=WARNA["putih"], warna=WARNA["navy"], tebal=False, tinggi=h, lebar=w, ukuran=8.2):
+        kotak(ax, x, y, lebar, tinggi, teks, isi=isi, warna=warna, ukuran=ukuran, tebal=tebal, r=0.8, lw=1.1)
 
-    fig, ax = plt.subplots(figsize=(10, 4.9))
-    # Pita serapan utama
-    pita = [
-        (0.43, 0.55, "Fe³⁺\n(goetit/hematit)", "#FDEBD0"),
-        (0.82, 0.96, "Fe³⁺\n(transisi kristal)", "#FDEBD0"),
-        (1.37, 1.47, "H₂O & OH\n(1,4 µm)", "#DCEAF7"),
-        (1.86, 1.99, "H₂O\n(1,9 µm)", "#DCEAF7"),
-        (2.16, 2.26, "Al–OH lempung\n(2,2 µm)", "#E8DAEF"),
-    ]
-    for a, b_w, lbl, col in pita:
-        ax.axvspan(a, b_w, color=col, alpha=0.85, zorder=0)
-        ax.text((a + b_w) / 2, 47.5, lbl, ha="center", va="top", fontsize=7.6, color=WARNA["teks"], linespacing=1.1)
+    def ke(x1, y1, x2, y2, warna=WARNA["abu"]):
+        panah(ax, x1, y1, x2, y2, warna=warna, lw=1.1, skala=10)
 
-    ax.plot(w, k_pasir_kering, color=WARNA["kuning"], lw=2.2, label="Tanah berpasir kering (SOM rendah)")
-    ax.plot(w, k_lempung_fe, color=WARNA["oranye"], lw=2.2, label="Tanah berlempung kaya oksida besi & kaolinit")
-    ax.plot(w, k_organik_tinggi, color=WARNA["tanah"], lw=2.2, label="Tanah kaya bahan organik (C-organik tinggi)")
-    ax.plot(w, k_lempung_lembap, color=WARNA["navy"], lw=2.0, ls="--", label="Tanah berlempung lembap (kadar lengas tinggi)")
+    # data penginderaan jauh
+    ax.text(10.5, 56.0, "Data penginderaan jauh", ha="center", va="center", fontsize=9.5, fontweight="bold",
+            color=WARNA["navy"])
+    data = ["Citra optik\n(pantulan)", "Citra SAR\n(hamburan balik)", "DEM dan\nturunannya", "Citra multitemporal\n(respons vegetasi)"]
+    for i, teks in enumerate(data):
+        node(1.5, 43.0 - i * 12.0, teks, isi=WARNA["latar"], warna=WARNA["abu"], tinggi=8.0, lebar=18.0)
+    ax.plot([21.0, 21.0], [11.0, 47.0], color=WARNA["abu"], lw=1.1)
+    for y in (47.0, 35.0, 23.0, 11.0):
+        ax.plot([19.5, 21.0], [y, y], color=WARNA["abu"], lw=1.1)
 
-    # Bar perbandingan kanal Sentinel-2 vs Hiperspektral di bagian atas
-    s2_bands = [("B2", 0.458, 0.523), ("B3", 0.543, 0.578), ("B4", 0.650, 0.680), ("B5", 0.698, 0.713),
-                ("B6", 0.733, 0.748), ("B7", 0.773, 0.793), ("B8", 0.785, 0.900), ("B8A", 0.855, 0.875),
-                ("B11", 1.565, 1.655), ("B12", 2.100, 2.280)]
-    for nama, a, b_w in s2_bands:
-        ax.add_patch(Rectangle((a, 51.5), b_w - a, 2.2, fc=WARNA["teal"], ec="white", lw=0.4, clip_on=False))
-        if nama in ("B2", "B3", "B4", "B8", "B11", "B12"):
-            ax.text((a + b_w) / 2, 54.1, nama, ha="center", va="bottom", fontsize=7.5, fontweight="bold",
-                    color=WARNA["navy"], clip_on=False)
-    for hw in np.arange(0.42, 2.46, 0.014):
-        if not (1.36 < hw < 1.46 or 1.82 < hw < 1.96):
-            ax.add_patch(Rectangle((hw, 49.2), 0.010, 1.4, fc=WARNA["ungu"], ec="none", alpha=0.8, clip_on=False))
-    ax.text(0.40, 52.6, "Sentinel-2 MSI (lebar):", ha="right", va="center", fontsize=7.8, color=WARNA["teal"],
-            fontweight="bold", clip_on=False)
-    ax.text(0.40, 49.9, "Hiperspektral (sempit):", ha="right", va="center", fontsize=7.8, color=WARNA["ungu"],
-            fontweight="bold", clip_on=False)
+    # dua jalur
+    lajur = [(31.0, "(a) Jalur langsung", WARNA["teal"], "hasil mewakili lapisan permukaan",
+              ["Permukaan tanah\nterbuka", "Indikator spektral:\npantulan kanal, indeks,\nkedalaman serapan",
+               "Sifat aktif secara spektral:\nbahan organik, lempung,\noksida besi, kelembapan"]),
+             (4.0, "(b) Jalur tidak langsung", WARNA["oranye"], "dapat mencakup lapisan lebih dalam",
+              ["Permukaan bervegetasi\natau sifat tanpa\nfitur spektral", "Indikator pengganti:\nrespons vegetasi, posisi\ntopografi, dinamika air",
+               "Hubungan tanah–\nlingkungan\n(kovariat SCORPAN)"])]
+    for y0, label, warna, catatan, isi_kotak in lajur:
+        ax.add_patch(Rectangle((23.0, y0 - 1.0), 59.5, 23.0, fc=WARNA["latar"], ec="none", zorder=0))
+        ax.text(24.5, y0 + 19.6, label, fontsize=10, fontweight="bold", color=warna, va="center")
+        for k, teks in enumerate(isi_kotak):
+            x = 24.5 + k * 19.5
+            if k == 2:
+                node(x, y0 + 4.0, teks, isi=warna, warna=warna, tebal=False, tinggi=10.5)
+                ax.texts[-1].set_color("white")
+            else:
+                node(x, y0 + 4.75, teks)
+            if k:
+                ke(x - 2.0, y0 + 9.25, x, y0 + 9.25)
+        ke(21.0, y0 + 9.25, 24.5, y0 + 9.25)
+        ax.text(72.75, y0 + 1.9, catatan, ha="center", va="center", fontsize=7.6, color=warna, style="italic")
 
-    ax.annotate("Penurunan pantulan tampak–NIR\nakibat bahan organik (SOM)", xy=(0.68, 13.8), xytext=(0.95, 6.8),
-                arrowprops=dict(arrowstyle="-|>", color=WARNA["tanah"], lw=1.1), fontsize=8, color=WARNA["tanah"])
-    ax.annotate("Serapan spesifik Al–OH (2,20 µm)\ntertangkap di dalam kanal B12", xy=(2.205, 21.3), xytext=(1.48, 25.0),
-                arrowprops=dict(arrowstyle="-|>", color=WARNA["ungu"], lw=1.1), fontsize=8, color=WARNA["ungu"])
-
-    ax.set_xlim(0.4, 2.5)
-    ax.set_ylim(0, 48.5)
-    ax.set_xlabel("Panjang gelombang (µm)", fontsize=9.5)
-    ax.set_ylabel("Reflektansi permukaan (%)", fontsize=9.5)
-    ax.legend(loc="upper left", bbox_to_anchor=(0.01, 0.90), fontsize=8.4, framealpha=0.9, frameon=True, facecolor="white")
-    ax.text(0.99, 0.02, "Ilustrasi skematis berdasarkan Ben-Dor et al. (2009) dan Mulder et al. (2011)",
-            transform=ax.transAxes, ha="right", va="bottom", fontsize=7.8, style="italic", color=WARNA["abu"])
-    fig.subplots_adjust(top=0.84, left=0.14, right=0.98, bottom=0.12)
-    simpan(fig, MODUL, "M4-G01_fitur-serapan-spektral-tanah.png")
+    # kalibrasi dan keluaran
+    node(85.5, 24.5, "Kalibrasi dan\nvalidasi dengan\ndata tanah lapangan\ndan laboratorium", isi="#DCEAF7",
+         tinggi=12.0, lebar=17.5)
+    node(85.5, 4.0, "Peta estimasi\nsifat tanah", isi="#DCEAF7", tebal=True, tinggi=9.0, lebar=17.5)
+    ke(81.5, 40.25, 92.0, 36.6, warna=WARNA["teal"])
+    ke(81.5, 13.25, 92.0, 24.4, warna=WARNA["oranye"])
+    ke(94.25, 24.4, 94.25, 13.1, warna=WARNA["navy"])
+    simpan(fig, MODUL, "M4-G01_jalur-estimasi-sifat-tanah.png")
 
 
 # ---------------------------------------------------------------- Gambar 4.2
-def g02_faktor_pengganggu():
-    fig, ax = kanvas(10, 4.4, (0, 104), (-2, 44))
-    panel = [
-        ("(a) Kedalaman penetrasi dangkal", "Optik hanya merekam < 1 mm;\nSAR gelombang C/L hanya ±2–20 cm,\nsedangkan solum mencapai > 40 cm"),
-        ("(b) Tutupan tajuk dan serasah", "Piksel mencampur pantulan tajuk,\nserasah kering (NPV), dan tanah;\nsinyal tanah tertutup di kebun rapat"),
-        ("(c) Kelembapan permukaan sesaat", "Hujan lokal menurunkan pantulan\nseluruh kanal sehingga tanah basah\ntampak menyerupai tanah kaya SOM"),
-        ("(d) Kekasaran dan bayangan mikro", "Bongkah pengolahan tanah atau\nlereng curam menimbulkan bayangan\nmikro yang menurunkan pantulan"),
+def kurva_halus(titik, x):
+    xs, ys = zip(*titik)
+    y = PchipInterpolator(xs, ys)(x)
+    k = np.ones(5) / 5
+    return np.convolve(np.pad(y, 2, mode="edge"), k, mode="valid")
+
+
+def g02_fitur_serapan():
+    x = np.linspace(0.40, 2.50, 1400)
+    seri = [
+        ("Tanah berlempung, bahan organik dan besi rendah", WARNA["teal"],
+         [(0.40, 0.22), (0.50, 0.32), (0.60, 0.42), (0.70, 0.50), (0.80, 0.56), (1.00, 0.63), (1.20, 0.68), (1.33, 0.70),
+          (1.38, 0.62), (1.41, 0.585), (1.45, 0.63), (1.55, 0.69), (1.70, 0.71), (1.84, 0.70), (1.90, 0.58), (1.93, 0.555),
+          (1.97, 0.60), (2.05, 0.66), (2.14, 0.665), (2.20, 0.575), (2.26, 0.645), (2.33, 0.63), (2.42, 0.59), (2.50, 0.55)]),
+        ("Tanah kaya oksida besi", WARNA["merah"],
+         [(0.40, 0.08), (0.45, 0.09), (0.50, 0.115), (0.55, 0.175), (0.60, 0.265), (0.65, 0.315), (0.70, 0.345),
+          (0.75, 0.360), (0.80, 0.352), (0.88, 0.328), (0.96, 0.338), (1.04, 0.370), (1.12, 0.405), (1.25, 0.445),
+          (1.33, 0.455), (1.38, 0.41), (1.41, 0.39), (1.45, 0.42), (1.55, 0.465), (1.70, 0.485), (1.84, 0.48), (1.90, 0.405),
+          (1.93, 0.385), (1.97, 0.42), (2.05, 0.455), (2.14, 0.46), (2.20, 0.41), (2.26, 0.45), (2.35, 0.435), (2.50, 0.395)]),
+        ("Tanah kaya bahan organik", WARNA["tanah"],
+         [(0.40, 0.040), (0.50, 0.050), (0.60, 0.064), (0.70, 0.084), (0.80, 0.104), (1.00, 0.138), (1.20, 0.166),
+          (1.33, 0.178), (1.38, 0.162), (1.41, 0.156), (1.45, 0.165), (1.60, 0.188), (1.84, 0.198), (1.90, 0.172),
+          (1.93, 0.166), (1.97, 0.176), (2.10, 0.190), (2.20, 0.180), (2.30, 0.182), (2.50, 0.170)]),
     ]
-    for k, (judul, ket) in enumerate(panel):
-        x0 = 1 + k * 26
-        kotak(ax, x0, 8, 24, 30, isi=WARNA["latar"], warna=WARNA["abu_muda"], lw=1.0, r=1.0, zorder=1)
-        ax.text(x0 + 12, 40.5, judul, ha="center", va="center", fontsize=9.2, fontweight="bold", color=WARNA["navy"])
-        ax.text(x0 + 12, 3.0, ket, ha="center", va="center", fontsize=7.9, color=WARNA["teks"], linespacing=1.2)
+    fig, (ax, bx) = plt.subplots(2, 1, figsize=(10, 6.6), sharex=True, gridspec_kw=dict(height_ratios=[3.3, 1.0], hspace=0.08))
 
-    # (a) Penampang kedalaman
-    x0 = 3
-    ax.add_patch(Rectangle((x0, 26), 20, 4, fc="#8C5A3C", ec="white", lw=0.8, zorder=3))
-    ax.add_patch(Rectangle((x0, 18), 20, 8, fc="#B5763F", ec="white", lw=0.8, zorder=3))
-    ax.add_patch(Rectangle((x0, 10), 20, 8, fc="#D9A35F", ec="white", lw=0.8, zorder=3))
-    ax.text(x0 + 10, 28, "Kulit permukaan (< 1 mm)", ha="center", va="center", fontsize=7.3, color="white", fontweight="bold", zorder=4)
-    ax.text(x0 + 10, 22, "Lapisan 1 (0–20 cm)", ha="center", va="center", fontsize=7.5, color="white", zorder=4)
-    ax.text(x0 + 10, 14, "Lapisan 2 (20–40 cm)", ha="center", va="center", fontsize=7.5, color=WARNA["teks"], zorder=4)
-    panah(ax, x0 + 5, 36.5, x0 + 5, 30.2, warna=WARNA["teal"], lw=1.6)
-    ax.text(x0 + 5, 36.8, "Optik", ha="center", va="bottom", fontsize=7.5, color=WARNA["teal"], fontweight="bold")
-    panah(ax, x0 + 15, 36.5, x0 + 15, 25.0, warna=WARNA["ungu"], lw=1.6)
-    ax.text(x0 + 15, 36.8, "SAR", ha="center", va="bottom", fontsize=7.5, color=WARNA["ungu"], fontweight="bold")
+    # (a) spektrum skematis
+    xa = ax.get_xaxis_transform()    # x dalam µm, y dalam fraksi sumbu
+    for a, b in SERAPAN_ATMOSFER:
+        ax.axvspan(a, b, color=WARNA["abu_muda"], zorder=0)
+        bx.axvspan(a, b, color=WARNA["abu_muda"], zorder=0)
+    for xm in (1.40, 1.875):
+        ax.text(xm, 0.015, "serapan\nuap air\natmosfer", transform=xa, ha="center", va="bottom", fontsize=7.3,
+                color=WARNA["abu"])
+    for (a, b) in ((0.48, 0.57), (0.85, 1.02)):
+        ax.axvspan(a, b, ymin=0.855, ymax=0.88, color=WARNA["merah"], alpha=0.40, lw=0)
+    fitur = [(0.525, "Fe³⁺\n(oksida besi)", WARNA["merah"]), (0.935, "Fe³⁺\n(oksida besi)", WARNA["merah"]),
+             (1.40, "OH dan\nH₂O", WARNA["biru"]), (1.90, "H₂O", WARNA["biru"]), (2.20, "OH kisi\nmineral lempung", WARNA["teal"])]
+    for xf, label, warna in fitur:
+        if xf > 1.0:
+            ax.axvline(xf, ymin=0.14, ymax=0.855, color=warna, lw=0.9, ls=":", zorder=1)
+            ax.axvspan(xf - 0.012, xf + 0.012, ymin=0.855, ymax=0.88, color=warna, alpha=0.55, lw=0)
+        ax.text(xf, 0.895, label, transform=xa, ha="center", va="bottom", fontsize=7.6, color=warna, linespacing=1.05)
+    for label, warna, titik in seri:
+        ax.plot(x, kurva_halus(titik, x), color=warna, lw=2.0, label=label, zorder=3)
+    ax.annotate("bahan organik menurunkan pantulan,\nterutama pada 0,55–0,70 µm", xy=(0.63, 0.072), xytext=(0.80, 0.235),
+                fontsize=7.6, color=WARNA["tanah"], arrowprops=dict(arrowstyle="-|>", color=WARNA["tanah"], lw=0.8))
+    for a, b, label in ((0.40, 0.70, "Tampak"), (0.70, 1.30, "Inframerah dekat"), (1.30, 2.50, "Inframerah gelombang pendek (SWIR)")):
+        ax.plot([a + 0.01, b - 0.01], [1.015, 1.015], transform=xa, color=WARNA["abu"], lw=0.8, clip_on=False)
+        ax.text((a + b) / 2, 1.025, label, transform=xa, ha="center", va="bottom", fontsize=8.2, color=WARNA["abu"],
+                clip_on=False)
+    ax.set_ylim(0, 1.22)
+    ax.set_yticks([])
+    ax.set_ylabel("Pantulan relatif")
+    ax.legend(loc="upper left", bbox_to_anchor=(0.005, 0.835), fontsize=8.6)
+    ax.text(0.995, 0.015, "Ilustrasi skematis — bukan data terukur", transform=ax.transAxes, ha="right", va="bottom",
+            fontsize=7.8, style="italic", color=WARNA["abu"])
+    ax.text(-0.035, 1.0, "(a)", transform=ax.transAxes, fontsize=10, fontweight="bold", color=WARNA["navy"], va="bottom")
 
-    # (b) Mixed pixel
-    x0 = 29
-    ax.add_patch(Rectangle((x0 + 2, 11), 16, 16, fc=WARNA["tanah_muda"], ec=WARNA["navy"], lw=1.4, zorder=3))
-    ax.add_patch(Rectangle((x0 + 2, 17), 11, 10, fc=WARNA["hijau"], alpha=0.85, ec="none", zorder=4))
-    ax.add_patch(Rectangle((x0 + 10, 11), 8, 9, fc="#C9A25F", alpha=0.9, ec="none", zorder=4))
-    ax.text(x0 + 7.5, 22, "Tajuk\nvegetasi\n(60%)", ha="center", va="center", fontsize=7.5, color="white", fontweight="bold", zorder=5)
-    ax.text(x0 + 14, 15.5, "Serasah\n(25%)", ha="center", va="center", fontsize=7.3, color=WARNA["teks"], zorder=5)
-    ax.text(x0 + 6, 14, "Tanah\n(15%)", ha="center", va="center", fontsize=7.3, color=WARNA["teks"], fontweight="bold", zorder=5)
-    ax.text(x0 + 10, 32.5, "Satu piksel 10 × 10 m", ha="center", fontsize=8, color=WARNA["navy"], fontweight="bold")
-    ax.text(x0 + 10, 29.2, "$R_{piksel} = f_v R_v + f_s R_s + f_t R_t$", ha="center", fontsize=7.8, color=WARNA["abu"])
-
-    # (c) Kelembapan
-    x0 = 55
-    ax.add_patch(Rectangle((x0 + 1, 12), 9, 8, fc="#D9A35F", ec=WARNA["tanah"], lw=1, zorder=3))
-    ax.add_patch(Rectangle((x0 + 10, 12), 9, 8, fc="#5C3A21", ec=WARNA["tanah"], lw=1, zorder=3))
-    ax.text(x0 + 5.5, 16, "Kering\n(cerah)", ha="center", va="center", fontsize=7.5, color=WARNA["teks"], fontweight="bold", zorder=4)
-    ax.text(x0 + 14.5, 16, "Basah\n(gelap)", ha="center", va="center", fontsize=7.5, color="white", fontweight="bold", zorder=4)
-    panah(ax, x0 + 5.5, 20.5, x0 + 5.5, 33, warna=WARNA["oranye"], lw=2.2)
-    panah(ax, x0 + 14.5, 20.5, x0 + 14.5, 27, warna=WARNA["biru"], lw=1.3)
-    ax.text(x0 + 10, 34.5, "Tanah yang sama,\nreflektansi berbeda", ha="center", fontsize=7.8, color=WARNA["navy"])
-
-    # (d) Kekasaran permukaan
-    x0 = 81
-    ax.add_patch(Rectangle((x0 + 1, 24), 18, 2.5, fc=WARNA["tanah_muda"], ec=WARNA["tanah"], lw=1, zorder=3))
-    panah(ax, x0 + 4, 33, x0 + 8, 26.8, warna=WARNA["oranye"], lw=1.3)
-    panah(ax, x0 + 8, 26.8, x0 + 14, 33.5, warna=WARNA["teal"], lw=1.6)
-    ax.text(x0 + 17, 29, "halus", fontsize=7.5, color=WARNA["teal"], ha="center")
-    # permukaan kasar bergelombang
-    xs = np.linspace(x0 + 1, x0 + 19, 13)
-    ys = [12, 16, 12, 15.5, 12, 16, 12, 15.5, 12, 16, 12, 15, 12]
-    poly = np.vstack([np.c_[xs, ys], [[x0 + 19, 10], [x0 + 1, 10]]])
-    ax.add_patch(Polygon(poly, fc=WARNA["tanah"], ec="#4A2E1B", lw=0.9, zorder=3))
-    panah(ax, x0 + 4, 21, x0 + 7.5, 14.5, warna=WARNA["oranye"], lw=1.3)
-    ax.text(x0 + 13.5, 18.5, "bayangan mikro\n(hamburan terjebak)", fontsize=7.3, color=WARNA["merah"], ha="center")
-
-    simpan(fig, MODUL, "M4-G02_faktor-pengganggu-estimasi-tanah.png")
+    # (b) posisi kanal
+    for nama, a, b in KANAL_S2:
+        isi = "#4F6D8F" if nama in ("B5", "B6", "B7") else WARNA["navy"]
+        bx.add_patch(Rectangle((a, 1.55), b - a, 0.6, fc=isi, ec="white", lw=0.4))
+    for nama, xl in (("B2", 0.49), ("B3", 0.56), ("B4", 0.665), ("B5–B7", 0.745), ("B8", 0.842), ("B11", 1.61), ("B12", 2.19)):
+        bx.text(xl, 2.25, nama, ha="center", va="bottom", fontsize=7.4, color=WARNA["navy"])
+    for w0 in np.arange(0.40, 2.50, 0.0105):
+        bx.add_patch(Rectangle((w0, 0.35), 0.0085, 0.6, fc=WARNA["ungu"], ec="none"))
+    bx.text(0.405, 2.95, "Sentinel-2 MSI: kanal lebar (B12 selebar ±180 nm)", fontsize=8.2, va="bottom", color=WARNA["navy"])
+    bx.text(0.405, 1.05, "Hiperspektral (mis. PRISMA): ±240 kanal bersambung, lebar ≤ 15 nm", fontsize=8.2, va="bottom",
+            color=WARNA["ungu"])
+    bx.set_ylim(0, 3.6)
+    bx.set_yticks([])
+    bx.spines["left"].set_visible(False)
+    bx.set_xlim(0.40, 2.50)
+    bx.xaxis.set_major_locator(MultipleLocator(0.5))
+    bx.xaxis.set_minor_locator(MultipleLocator(0.1))
+    bx.xaxis.set_major_formatter(KOMA)
+    bx.set_xlabel("Panjang gelombang (µm)")
+    bx.text(-0.035, 1.0, "(b)", transform=bx.transAxes, fontsize=10, fontweight="bold", color=WARNA["navy"], va="bottom")
+    simpan(fig, MODUL, "M4-G02_fitur-serapan-spektrum-tanah.png")
 
 
 # ---------------------------------------------------------------- Gambar 4.3
-def g03_peta_indeks(indeks, mask, ext):
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    titik = gaya.baca_layer("titik_sampel_rencana")
-    tx = [g.GetX() for _, g in titik]
-    ty = [g.GetY() for _, g in titik]
-
-    konfig = [
-        ("BI", "(a) Brightness Index (BI)\nKecerahan permukaan", "YlOrBr", 0.03, 0.14),
-        ("CI", "(b) Clay Minerals Ratio (B11/B12)\nNisbah SWIR1 terhadap SWIR2", "PuOr", 1.45, 2.25),
-        ("NDWI", "(c) Normalized Difference Water Index\nNDWI = (B8 − B11)/(B8 + B11)", "RdYlBu", 0.10, 0.48),
-        ("SAVI", "(d) Soil-Adjusted Vegetation Index\nSAVI (L = 0,5)", "YlGn", 0.25, 0.65),
-    ]
-    fig, axs = plt.subplots(1, 4, figsize=(10, 6.2))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.88, bottom=0.14, wspace=0.05)
-    for ax, (k, judul, cmap, vmin, vmax) in zip(axs, konfig):
-        arr = np.ma.masked_where(~mask, indeks[k])
-        im = ax.imshow(arr, extent=ext, cmap=cmap, vmin=vmin, vmax=vmax, interpolation="nearest")
-        gaya.gambar_poligon(ax, batas, fc="none", ec=WARNA["navy"], lw=1.2)
-        ax.scatter(tx, ty, s=7, c="white", edgecolors=WARNA["navy"], lw=0.5, zorder=5)
-        ax.set_xlim(ext[0] + 140, ext[1] - 140)
-        ax.set_ylim(ext[2] + 140, ext[3] - 140)
-        ax.set_xticks([]), ax.set_yticks([])
-        for s in ax.spines.values():
-            s.set_visible(False)
-        ax.set_title(judul, fontsize=8.8)
-        cb = fig.colorbar(im, ax=ax, orientation="horizontal", fraction=0.045, pad=0.03)
-        cb.ax.tick_params(labelsize=7.5)
-    gaya.skala_batang(axs[0], ext[0] + 200, ext[2] + 220, 500, "500 m", tinggi=24)
-    gaya.panah_utara(axs[0], 0.88, 0.88, 0.05)
-    simpan(fig, MODUL, "M4-G03_peta-indeks-spektral-bompon.png")
+def matahari(ax, x, y, r=2.6):
+    for a in np.linspace(0, 2 * np.pi, 12, endpoint=False):
+        ax.plot([x + 1.25 * r * np.cos(a), x + 1.7 * r * np.cos(a)],
+                [y + 1.25 * r * np.sin(a), y + 1.7 * r * np.sin(a)], color=WARNA["kuning"], lw=1.5, zorder=3)
+    ax.add_patch(Circle((x, y), r, fc=WARNA["kuning"], ec="#E0A82E", lw=1, zorder=4))
 
 
-# ---------------------------------------------------------------- Gambar 4.4
-def g04_indeks_dan_fraksi(indeks, mask, pl):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.6), gridspec_kw={"width_ratios": [1.05, 1.15]})
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.86, bottom=0.18, wspace=0.26)
+def satelit(ax, x, y, s=0.8):
+    ax.add_patch(Rectangle((x - 1.6 * s, y - 1.2 * s), 3.2 * s, 2.4 * s, fc="#C9CED6", ec=WARNA["navy"], lw=1, zorder=5))
+    for arah in (-1, 1):
+        x0 = x + 1.6 * s if arah > 0 else x - 1.6 * s - 4.6 * s
+        ax.add_patch(Rectangle((x0, y - 0.9 * s), 4.6 * s, 1.8 * s, fc="#2F5D8C", ec=WARNA["navy"], lw=0.8, zorder=5))
 
-    # Panel (a): Boxplot SAVI dan Clay Ratio per penggunaan lahan
-    kelas_pl = list(gaya.WARNA_PENGGUNAAN)
-    data_savi = [indeks["SAVI"][mask & (pl == i + 1)] for i in range(len(kelas_pl))]
-    data_ndwi = [indeks["NDWI"][mask & (pl == i + 1)] for i in range(len(kelas_pl))]
-    pos = np.arange(len(kelas_pl))
-    bp1 = ax1.boxplot(data_savi, positions=pos - 0.17, widths=0.28, patch_artist=True, showfliers=False,
-                      medianprops=dict(color=WARNA["navy"], lw=1.4))
-    bp2 = ax1.boxplot(data_ndwi, positions=pos + 0.17, widths=0.28, patch_artist=True, showfliers=False,
-                      medianprops=dict(color=WARNA["navy"], lw=1.4))
-    for patch in bp1["boxes"]:
-        patch.set_facecolor(WARNA["hijau"])
-        patch.set_alpha(0.75)
-    for patch in bp2["boxes"]:
-        patch.set_facecolor(WARNA["biru"])
-        patch.set_alpha(0.75)
-    ax1.set_xticks(pos)
-    ax1.set_xticklabels(kelas_pl, fontsize=8.5)
-    ax1.set_ylabel("Nilai indeks spektral", fontsize=9)
-    ax1.set_title("(a) Sebaran SAVI dan NDWI per penggunaan lahan\n(citra Sentinel-2 Sub-DAS Bompon, 21 Juli 2025)", fontsize=9.2)
-    from matplotlib.patches import Patch
-    ax1.legend(handles=[Patch(fc=WARNA["hijau"], alpha=0.75, label="SAVI (kerapatan vegetasi)"),
-                        Patch(fc=WARNA["biru"], alpha=0.75, label="NDWI (kebasahan tajuk/permukaan)")],
-               loc="lower left", fontsize=8)
-    ax1.grid(axis="y", color=WARNA["abu_muda"], lw=0.5)
 
-    # Panel (b): Fraksi tekstur laboratorium per bentuklahan (Fatmawati, 2026 Lampiran 4, Lapisan 1: 0-20 cm)
-    lf_nama = ["Interfluve", "Lereng Atas\nPerbukitan", "Lereng Tengah\nPerbukitan",
-               "Lereng Bawah\nPerbukitan", "Lereng Kaki\nKoluvial", "Dataran\nKoluvial"]
-    pasir_l1 = np.array([15.72, 16.12, 16.37, 16.34, 18.00, 18.61])
-    debu_l1 = np.array([21.27, 20.64, 20.39, 20.50, 21.96, 23.00])
-    lempung_l1 = np.array([62.86, 63.09, 62.92, 62.63, 59.20, 57.91])
-    lempung_l2 = np.array([66.86, 67.41, 65.75, 64.68, 61.02, 64.04])
+def pohon(ax, x, y, s=1.0):
+    ax.add_patch(Rectangle((x - 0.25 * s, y), 0.5 * s, 2.6 * s, fc="#6B4A2B", ec="none", zorder=4))
+    for dx, dy, r in [(0, 3.9, 1.8), (-1.2, 3.1, 1.3), (1.2, 3.1, 1.3)]:
+        ax.add_patch(Circle((x + dx * s, y + dy * s), r * s, fc=WARNA["hijau"], ec="#3A7A20", lw=0.6, zorder=4))
 
-    x = np.arange(len(lf_nama))
-    w = 0.24
-    ax2.bar(x - w, lempung_l1, width=w, color=WARNA["tanah"], label="Lempung 0–20 cm")
-    ax2.bar(x, lempung_l2, width=w, color=WARNA["oranye"], label="Lempung 20–40 cm")
-    ax2.bar(x + w, debu_l1, width=w, color=WARNA["teal"], label="Debu 0–20 cm")
-    ax2.plot(x + w, pasir_l1, "o--", color=WARNA["navy"], lw=1.4, markersize=5, label="Pasir 0–20 cm")
 
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(lf_nama, fontsize=7.6)
-    ax2.set_ylim(0, 82)
-    ax2.set_ylabel("Rata-rata fraksi tekstur (%)", fontsize=9)
-    ax2.set_title("(b) Rata-rata fraksi tekstur tanah per bentuklahan\n(data observasi laboratorium; Fatmawati, 2026)", fontsize=9.2)
-    ax2.legend(loc="upper right", ncol=2, fontsize=7.8)
-    ax2.grid(axis="y", color=WARNA["abu_muda"], lw=0.5)
+def g03_faktor_sinyal_tanah():
+    fig, ax = kanvas(10, 5.6, (0, 127), (-10.5, 64))
+    ax.add_patch(Rectangle((0, 16), 100, 48, fc="#F7FAFD", ec="none", zorder=0))
+    ax.add_patch(Rectangle((0, 38), 100, 10, fc="#EEF5FB", ec="none", zorder=0))
+    rng = np.random.default_rng(5)
+    ax.scatter(rng.uniform(1, 99, 150), rng.uniform(38.5, 47.5, 150), s=3, color="#A9C1DA", zorder=1)
+    ax.text(58.0, 43.0, "Atmosfer: hamburan dan serapan\noleh aerosol dan uap air", ha="left", va="center", fontsize=8,
+            color=WARNA["abu"], style="italic", zorder=2, bbox=dict(boxstyle="round,pad=0.25", fc="#EEF5FB", ec="none"))
+    nomor(ax, 55.4, 43.0, 1)
 
-    simpan(fig, MODUL, "M4-G04_indeks-dan-fraksi-tanah-bompon.png")
+    # medan: bukit di kiri, dataran di kanan
+    bukit = np.array([(0, 16), (0, 19), (7, 24), (14, 30), (20, 31.5), (26, 29), (32, 22.5), (38, 17.5), (42, 16)])
+    terang = np.array([(0, 16), (0, 19), (7, 24), (14, 30), (20, 31.5), (20, 16)])
+    gelap = np.array([(20, 31.5), (26, 29), (32, 22.5), (38, 17.5), (42, 16), (20, 16)])
+    ax.add_patch(Polygon(terang, fc="#F0E1C8", ec="none", zorder=2.1))
+    ax.add_patch(Polygon(gelap, fc="#B9A182", ec="none", zorder=2.1))
+    ax.plot(bukit[:, 0], bukit[:, 1], color=WARNA["tanah"], lw=1.2, zorder=3)
+    ax.text(8.5, 19.6, "lereng\nterkena sinar", ha="center", fontsize=7.6, color=WARNA["teks"], zorder=4)
+    ax.text(30.5, 18.0, "lereng\nterbayangi", ha="center", fontsize=7.6, color="white", zorder=4)
+    nomor(ax, 33.5, 26.5, 2)
+
+    # tanah di bawah permukaan dan jenis permukaan pada dataran
+    ax.add_patch(Rectangle((0, 2), 100, 14, fc="#CDB89A", ec="none", zorder=1.5))
+    seg = [(42, 52, "#E3C79F"), (52, 61, "#9C7650"), (61, 69, "#CDB27A"), (69, 77, "#B79E7C")]
+    for x0, x1, isi in seg:
+        ax.add_patch(Rectangle((x0, 14.6), x1 - x0, 1.4, fc=isi, ec="none", zorder=2.5))
+    for k in range(6):
+        ax.plot([52.6 + k * 1.4, 53.6 + k * 1.4], [15.3, 15.9], color="#6E5236", lw=0.9, zorder=3)
+    for k in range(14):
+        xx = 61.4 + k * 0.53
+        ax.plot([xx, xx + 0.9], [16.0, 16.9 + 0.3 * (k % 3)], color="#A9863F", lw=1.0, zorder=3)
+    for xp in (71.4, 75.0):
+        pohon(ax, xp, 16.0, 1.1)
+    ax.plot([42, 100], [16, 16], color=WARNA["tanah"], lw=1.2, zorder=3)
+    for xm, label in ((47.0, "tanah\nterbuka\nkering"), (56.5, "tanah\nlembap,\nberkerak"), (65.0, "serasah,\nsisa\ntanaman"),
+                      (73.0, "tajuk\nvegetasi")):
+        ax.text(xm, 10.6, label, ha="center", va="center", fontsize=7.3, color=WARNA["teks"], zorder=4, linespacing=1.05)
+    nomor(ax, 56.5, 20.0, 4)
+    nomor(ax, 66.0, 21.8, 3)
+
+    # satu piksel campuran
+    ax.plot([52, 52, 77, 77], [25.4, 26.6, 26.6, 25.4], color=WARNA["navy"], lw=1.1, zorder=4)
+    ax.text(64.5, 27.4, "satu piksel: campuran beberapa permukaan", ha="center", va="bottom", fontsize=7.6,
+            color=WARNA["navy"], zorder=5, bbox=dict(boxstyle="round,pad=0.15", fc="#F7FAFD", ec="none"))
+    nomor(ax, 79.6, 26.0, 5)
+
+    # sumber energi, sensor, dan lintasan energi
+    matahari(ax, 6.5, 57.0)
+    satelit(ax, 46.5, 58.5)
+    ax.text(46.5, 61.6, "Sensor optik", ha="center", fontsize=8.5)
+    satelit(ax, 89.0, 58.5)
+    ax.text(89.0, 61.6, "Sensor SAR", ha="center", fontsize=8.5)
+    for xt, yt in ((10.0, 25.6), (47.0, 16.4)):
+        panah(ax, 9.0, 53.0, xt, yt, warna=WARNA["oranye"], lw=1.4)
+    for xs, ys, lebar in ((10.0, 25.6, 2.0), (30.0, 25.0, 0.6), (47.0, 16.4, 2.0), (65.0, 17.6, 1.0)):
+        panah(ax, xs, ys, 46.0, 55.6, warna=WARNA["teal"], lw=lebar)
+    ax.text(48.2, 31.0, "pantulan", fontsize=7.6, color=WARNA["teal"], ha="left")
+    for k in range(3):
+        panah(ax, 87.6 + k * 1.4, 55.5, 85.0 + k * 3.0, 16.4, warna=WARNA["ungu"], lw=0.9, putus=True, skala=8)
+    ax.text(93.0, 30.0, "gelombang\nmikro", fontsize=7.6, color=WARNA["ungu"], ha="left")
+
+    # panel kedalaman yang terwakili
+    ax.add_patch(Rectangle((101.5, 2.0), 25.5, 62.0, fc=WARNA["latar"], ec="none", zorder=0))
+    ax.text(114.25, 59.5, "Kedalaman yang\nterwakili", ha="center", va="center", fontsize=8.8, fontweight="bold",
+            color=WARNA["navy"])
+    nomor(ax, 114.25, 53.6, 6)
+    atas, skala = 47.0, 1.3          # 0 cm pada y = 47; 1 cm = 1,3 satuan gambar
+    ax.add_patch(Rectangle((106.0, atas - 30 * skala), 5.0, 30 * skala, fc="#CDB89A", ec=WARNA["tanah"], lw=0.8))
+    for z in (0, 5, 15, 30):
+        y = atas - z * skala
+        ax.plot([105.2, 111.0], [y, y], color=WARNA["tanah"], lw=0.8, ls="--" if z else "-")
+        ax.text(104.8, y, f"{z} cm" if z == 30 else f"{z}", ha="right", va="center", fontsize=7.2, color=WARNA["teks"])
+    ax.add_patch(Rectangle((111.8, atas - 0.6), 1.0, 0.6, fc=WARNA["teal"], ec="none"))
+    ax.add_patch(Rectangle((113.4, atas - 5 * skala), 1.0, 5 * skala, fc=WARNA["ungu"], alpha=0.75, ec="none"))
+    ax.add_patch(Rectangle((115.0, atas - 30 * skala), 1.0, 30 * skala, fc=WARNA["navy"], ec="none"))
+    ax.text(116.8, atas - 0.3, "optik: permukaan\npaling atas", fontsize=6.8, color="#0F5E55", va="center",
+            linespacing=1.05)
+    ax.text(116.8, atas - 5.6, "gelombang\nmikro pita L:\nbeberapa cm\nteratas", fontsize=7.0, color="#4B3575",
+            va="center", linespacing=1.05)
+    ax.text(116.8, atas - 21.0, "interval\nkedalaman\nDSM, mis.\nGlobalSoilMap\n0–5, 5–15,\n15–30 cm", fontsize=7.0,
+            color=WARNA["navy"], va="center", linespacing=1.05)
+
+    # keterangan nomor
+    ket = ["Atmosfer", "Iluminasi dan topografi", "Penutup permukaan", "Kondisi permukaan tanah",
+           "Resolusi sensor dan piksel campuran", "Kedalaman yang terwakili"]
+    for i, teks in enumerate(ket):
+        kol, bar = divmod(i, 2)
+        x0, y0 = 3.0 + kol * 42.0, -2.6 - bar * 4.8
+        nomor(ax, x0, y0, i + 1, r=1.5, ukuran=8)
+        ax.text(x0 + 2.8, y0, teks, va="center", fontsize=8.5)
+    simpan(fig, MODUL, "M4-G03_faktor-sinyal-tanah.png")
 
 
 if __name__ == "__main__":
     gaya.atur()
-    b, mask, pl, gt, ext = baca_sentinel2()
-    indeks = hitung_indeks(b)
-    stat = simpan_statistik(indeks, mask, pl, gt)
-    print(json.dumps(stat, indent=2, ensure_ascii=False))
-    g01_fitur_serapan_tanah()
-    g02_faktor_pengganggu()
-    g03_peta_indeks(indeks, mask, ext)
-    g04_indeks_dan_fraksi(indeks, mask, pl)
+    g01_jalur_estimasi()
+    g02_fitur_serapan()
+    g03_faktor_sinyal_tanah()

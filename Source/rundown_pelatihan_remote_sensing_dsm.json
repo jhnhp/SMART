@@ -1,0 +1,193 @@
+{
+  "judul": "Pelatihan Pemanfaatan Remote Sensing dan Digital Soil Mapping untuk Pertanian Presisi pada Perkebunan Kelapa Sawit",
+  "hari": [
+    {
+      "hari_ke": 1,
+      "kegiatan": [
+        {
+          "waktu_mulai": "07:30",
+          "waktu_selesai": "08:00",
+          "kegiatan": "Registrasi peserta",
+          "narasumber": "Panitia"
+        },
+        {
+          "waktu_mulai": "08:00",
+          "waktu_selesai": "09:00",
+          "kegiatan": "Pengantar Remote Sensing dan Pemetaan Tanah pada perkebunan",
+          "narasumber": "Prof. Dr. rer.nat. Junun Sartohadi, M.Sc."
+        },
+        {
+          "waktu_mulai": "09:00",
+          "waktu_selesai": "09:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "09:15",
+          "waktu_selesai": "10:15",
+          "kegiatan": "Interpretasi Pedologis dari Data Remote Sensing",
+          "narasumber": "Dr. rer.nat Muhammad Anggri Setiawan, S.Si., M.Si."
+        },
+        {
+          "waktu_mulai": "10:15",
+          "waktu_selesai": "11:45",
+          "kegiatan": "Multi-source Data Fusion: karakteristik dan integrasi data optik, SAR, LiDAR, DEM, serta data lingkungan",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "11:45",
+          "waktu_selesai": "13:00",
+          "kegiatan": "Istirahat",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "13:00",
+          "waktu_selesai": "14:00",
+          "kegiatan": "Multi-source Data Fusion: karakteristik dan integrasi data optik, SAR, LiDAR, DEM, serta data lingkungan",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "14:00",
+          "waktu_selesai": "14:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "14:15",
+          "waktu_selesai": "16:00",
+          "kegiatan": "Remote Sensing untuk Delineasi Soil Mapping Unit (SMU)",
+          "narasumber": "Praktik terbimbing"
+        }
+      ]
+    },
+    {
+      "hari_ke": 2,
+      "kegiatan": [
+        {
+          "waktu_mulai": "07:30",
+          "waktu_selesai": "08:00",
+          "kegiatan": "Registrasi peserta",
+          "narasumber": "Panitia"
+        },
+        {
+          "waktu_mulai": "08:00",
+          "waktu_selesai": "09:00",
+          "kegiatan": "Remote Sensing untuk Delineasi Soil Mapping Unit (SMU)",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "09:00",
+          "waktu_selesai": "09:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "09:15",
+          "waktu_selesai": "10:15",
+          "kegiatan": "Bare Soil Detection & Information Extraction",
+          "narasumber": "Dr. Retnadi Heru Jatmiko, M.Sc."
+        },
+        {
+          "waktu_mulai": "10:15",
+          "waktu_selesai": "11:45",
+          "kegiatan": "Proximal Soil Sensing",
+          "narasumber": "Pandu Yudha Adi Putra Wirabuana, S.Hut., M.Sc., Ph.D."
+        },
+        {
+          "waktu_mulai": "11:45",
+          "waktu_selesai": "13:00",
+          "kegiatan": "Istirahat",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "13:00",
+          "waktu_selesai": "14:00",
+          "kegiatan": "Proximal Soil Sensing: demonstrasi pengukuran",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "14:00",
+          "waktu_selesai": "14:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "14:15",
+          "waktu_selesai": "16:00",
+          "kegiatan": "Bare Soil Detection & Information Extraction",
+          "narasumber": "Praktik terbimbing"
+        }
+      ]
+    },
+    {
+      "hari_ke": 3,
+      "kegiatan": [
+        {
+          "waktu_mulai": "07:30",
+          "waktu_selesai": "08:00",
+          "kegiatan": "Registrasi peserta",
+          "narasumber": "Panitia"
+        },
+        {
+          "waktu_mulai": "08:00",
+          "waktu_selesai": "09:00",
+          "kegiatan": "Digital Soil Mapping",
+          "narasumber": "Dr. Eng. Guruh Samodra, S.Si., M.Sc."
+        },
+        {
+          "waktu_mulai": "09:00",
+          "waktu_selesai": "09:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "09:15",
+          "waktu_selesai": "10:15",
+          "kegiatan": "Machine Learning untuk Digital Soil Mapping",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "10:15",
+          "waktu_selesai": "11:45",
+          "kegiatan": "Penyiapan dan pemilihan kovariat dari data remote sensing berdasarkan konsep SCORPAN",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "11:45",
+          "waktu_selesai": "13:00",
+          "kegiatan": "Istirahat",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "13:00",
+          "waktu_selesai": "14:00",
+          "kegiatan": "Pembangunan model DSM",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "14:00",
+          "waktu_selesai": "14:15",
+          "kegiatan": "Coffee break",
+          "narasumber": null
+        },
+        {
+          "waktu_mulai": "14:15",
+          "waktu_selesai": "15:00",
+          "kegiatan": "Pembangunan model DSM",
+          "narasumber": "Praktik terbimbing"
+        },
+        {
+          "waktu_mulai": "15:00",
+          "waktu_selesai": "16:00",
+          "kegiatan": "Presentasi hasil, evaluasi, diskusi, kesan pesan, dan penutupan",
+          "narasumber": "Praktik terbimbing"
+        }
+      ]
+    }
+  ],
+  "catatan": [
+    "Jam awal yang terpotong pada gambar ditafsirkan sebagai 07:30.",
+    "Hari kegiatan disusun berdasarkan urutan tabel pada gambar; tanggal pelaksanaan tidak tercantum.",
+    "Nama dan gelar narasumber ditranskripsikan dari gambar dan sebaiknya diverifikasi terhadap dokumen asli."
+  ]
+}

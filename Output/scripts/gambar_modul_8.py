@@ -1,500 +1,421 @@
-"""Gambar dan analisis Modul 8 — Pemodelan Digital Soil Mapping (DSM).
+"""Gambar Modul 8 — Pemodelan Digital Soil Mapping.
 
 Jalankan: python3 Output/scripts/gambar_modul_8.py
-Keluaran:
-- Output/assets/modul-8/M8-G01_kerangka-tumpukan-kovariat-scorpan.png
-- Output/assets/modul-8/M8-G02_komparasi-algoritma-rf-qrf-catboost-stacking.png
-- Output/assets/modul-8/M8-G03_skema-validasi-dan-resampling-smogn.png
-- Output/assets/modul-8/M8-G04_perbandingan-akurasi-model-bompon.png
-- Output/assets/modul-8/M8-G05_tingkat-kepentingan-kovariat-rfe-bompon.png
-- Output/assets/modul-8/M8-G06_peta-prediksi-dan-ketidakpastian-tekstur-bompon.png
-- Output/assets/modul-8/sampel_dsm_bompon_50titik.csv
-- Output/assets/modul-8/statistik_modul_8.json
+Keluaran: Output/assets/modul-8/M8-Gxx_*.png
+Gambar 8.3 adalah diagram konseptual; Gambar 8.1, 8.2, 8.4, dan 8.5 dihitung dari data sintetis.
 """
-import csv
-import json
-import os
-
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Patch, Polygon, Rectangle
-from osgeo import gdal, ogr
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch, Rectangle
+from matplotlib.ticker import FuncFormatter, MultipleLocator
 from scipy import ndimage
+from scipy.cluster.vq import kmeans2
+from scipy.spatial import cKDTree
 
 import gaya
-from gaya import WARNA, kanvas, kotak, nomor, panah, simpan
-from gambar_modul_4 import baca_sentinel2, hitung_indeks
-
-gdal.UseExceptions()
-ogr.UseExceptions()
+from gaya import WARNA, kanvas, kotak, panah, simpan
 
 MODUL = "modul-8"
-KELUAR_JSON = os.path.join(gaya.ASET, MODUL, "statistik_modul_8.json")
-KELUAR_CSV = os.path.join(gaya.ASET, MODUL, "sampel_dsm_bompon_50titik.csv")
+KOMA = lambda d: FuncFormatter(lambda v, _: f"{v:.{d}f}".replace(".", ",").replace("-", "−"))  # noqa: E731
+# Palet kategorik tervalidasi (lima slot pertama palet acuan dataviz)
+KATEGORI = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]
+PENANDA = ["o", "s", "^", "D", "v"]
 
-# Data empiris resmi dari Tabel 4.1, 4.2, 4.3, 4.4, 4.5, dan Gambar 4.4-4.6 (Fatmawati, 2026)
-DATA_EMPIRIS = {
-    "observasi_tekstur_n50": {
-        "Pasir_L1": {"min": 6.49, "max": 33.67, "mean": 16.43, "std": 6.81, "cv": 41.42},
-        "Pasir_L2": {"min": 5.94, "max": 32.50, "mean": 15.68, "std": 7.32, "cv": 46.68},
-        "Debu_L1": {"min": 10.77, "max": 41.80, "mean": 21.09, "std": 6.56, "cv": 31.10},
-        "Debu_L2": {"min": 10.02, "max": 37.81, "mean": 19.54, "std": 6.14, "cv": 31.44},
-        "Lempung_L1": {"min": 38.97, "max": 82.73, "mean": 62.48, "std": 9.82, "cv": 15.72},
-        "Lempung_L2": {"min": 44.49, "max": 82.24, "mean": 64.78, "std": 10.32, "cv": 15.93},
-    },
-    "prediksi_stacking_smogn": {
-        "Pasir_L1": {"min": 7.05, "max": 33.67, "mean": 16.50, "std": 2.84, "cv": 17.21},
-        "Pasir_L2": {"min": 7.15, "max": 30.03, "mean": 15.20, "std": 2.46, "cv": 16.18},
-        "Debu_L1": {"min": 12.23, "max": 40.39, "mean": 20.85, "std": 2.86, "cv": 13.73},
-        "Debu_L2": {"min": 10.09, "max": 36.52, "mean": 19.23, "std": 2.64, "cv": 13.73},
-        "Lempung_L1": {"min": 39.40, "max": 80.92, "mean": 62.29, "std": 4.89, "cv": 7.85},
-        "Lempung_L2": {"min": 44.82, "max": 81.74, "mean": 65.54, "std": 4.15, "cv": 6.33},
-    },
-    "kinerja_tanpa_smogn": {
-        "Pasir L1": {"RF": (-0.03, 6.846, 4.990), "QRF": (-0.08, 6.624, 4.629), "CatBoost": (0.04, 6.590, 4.758), "Stacking": (0.081, 6.460, 4.963)},
-        "Pasir L2": {"RF": (-0.04, 7.374, 5.965), "QRF": (-0.11, 7.699, 6.029), "CatBoost": (0.01, 7.252, 5.949), "Stacking": (0.082, 6.940, 5.736)},
-        "Debu L1": {"RF": (-0.08, 6.755, 5.184), "QRF": (-0.31, 7.448, 5.795), "CatBoost": (0.15, 6.956, 5.202), "Stacking": (0.159, 5.954, 4.570)},
-        "Debu L2": {"RF": (0.08, 5.847, 4.493), "QRF": (-0.12, 6.425, 4.701), "CatBoost": (0.08, 5.847, 4.309), "Stacking": (0.125, 5.690, 4.548)},
-        "Lempung L1": {"RF": (0.03, 9.856, 7.746), "QRF": (-0.05, 9.968, 7.608), "CatBoost": (-0.06, 10.020, 7.742), "Stacking": (0.098, 9.238, 7.246)},
-        "Lempung L2": {"RF": (0.05, 9.970, 8.249), "QRF": (-0.06, 10.524, 8.608), "CatBoost": (0.05, 9.972, 8.413), "Stacking": (0.184, 9.224, 7.590)},
-    },
-    "kinerja_dengan_smogn": {
-        "Pasir L1": {"RF": (0.03, 6.829, 5.046), "QRF": (-0.06, 6.944, 5.186), "CatBoost": (0.11, 6.365, 4.461), "Stacking": (0.249, 5.840, 4.660)},
-        "Pasir L2": {"RF": (0.01, 7.232, 5.928), "QRF": (-0.01, 7.278, 5.911), "CatBoost": (-0.11, 7.633, 6.255), "Stacking": (0.124, 6.780, 5.330)},
-        "Debu L1": {"RF": (0.04, 6.630, 5.245), "QRF": (-0.32, 7.473, 5.865), "CatBoost": (-0.04, 6.618, 5.017), "Stacking": (0.196, 5.820, 4.630)},
-        "Debu L2": {"RF": (0.08, 5.834, 4.478), "QRF": (-0.14, 6.496, 4.941), "CatBoost": (0.03, 5.874, 4.408), "Stacking": (0.137, 5.810, 4.590)},
-        "Lempung L1": {"RF": (0.01, 9.672, 7.627), "QRF": (-0.02, 9.809, 7.337), "CatBoost": (0.04, 9.546, 7.344), "Stacking": (0.099, 9.230, 7.130)},
-        "Lempung L2": {"RF": (-0.03, 10.356, 8.434), "QRF": (-0.09, 10.649, 8.942), "CatBoost": (0.02, 10.106, 8.348), "Stacking": (0.093, 9.730, 7.920)},
-    },
-    "variable_importance_rfe": {
-        "Pasir L1": [("Aspect", 21.92, "R"), ("Profile curvature", 21.29, "R"), ("TWI", 20.70, "R"), ("Clay Index", 19.13, "S"), ("Valley depth", 16.96, "R")],
-        "Pasir L2": [("Elevasi", 12.65, "R"), ("CNBL", 12.50, "R"), ("TWI", 11.84, "R"), ("Slope", 9.62, "R"), ("NDVI", 9.44, "O"),
-                     ("Plan curvature", 9.26, "R"), ("Profile curvature", 9.20, "R"), ("LS factor", 8.91, "R"), ("Curvature", 8.71, "R"), ("Valley depth", 7.88, "R")],
-        "Debu L1": [("Valley depth", 15.34, "R"), ("TPI", 14.03, "R"), ("Slope", 12.11, "R"), ("MrVBF", 11.51, "R"), ("MrRTF", 10.07, "R"),
-                    ("Jarak sungai", 8.55, "N"), ("Elevasi", 7.68, "R"), ("CNBL", 7.35, "R"), ("TWI", 6.98, "R"), ("Plan curvature", 6.09, "R")],
-        "Debu L2": [("Elevasi", 23.90, "R"), ("MrRTF", 23.06, "R"), ("Plan curvature", 19.28, "R"), ("MrVBF", 16.98, "R"), ("Aspect", 15.78, "R")],
-        "Lempung L1": [("Profile curvature", 23.32, "R"), ("Plan curvature", 19.45, "R"), ("Curvature", 19.25, "R"), ("Slope", 19.19, "R"), ("MrVBF", 18.80, "R")],
-        "Lempung L2": [("Plan curvature", 11.74, "R"), ("Elevasi", 10.90, "R"), ("MrRTF", 10.68, "R"), ("Slope", 10.51, "R"), ("TPI", 10.26, "R"),
-                       ("MrVBF", 9.97, "R"), ("NDWI", 9.80, "O"), ("NDVI", 9.69, "O"), ("CNBL", 8.99, "R"), ("Profile curvature", 7.48, "R")],
-    },
-}
+
+def ramp(nama, terang, gelap):
+    return LinearSegmentedColormap.from_list(nama, [terang, gelap])
+
+
+def koma(v, d=1):
+    return f"{v:.{d}f}".replace(".", ",")
+
+
+# ---------------------------------------------------------------- lanskap sintetis
+def lanskap(n=140, sel=30.0, seed=4):
+    """Elevasi sintetis dua bukit dengan lembah di antaranya; sel 30 m."""
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:n, 0:n] / (n - 1)
+    z = (55 + 14 * (1 - yy)
+         + 28 * np.exp(-((xx - 0.25) ** 2 + (yy - 0.30) ** 2) / 0.035)
+         + 22 * np.exp(-((xx - 0.78) ** 2 + (yy - 0.72) ** 2) / 0.045)
+         - 9 * np.exp(-((xx - 0.52 - 0.15 * (yy - 0.5)) ** 2) / 0.006)
+         + ndimage.gaussian_filter(rng.normal(0, 1, (n, n)), 6) * 9)
+    gy, gx = np.gradient(z, sel)
+    lereng = np.hypot(gx, gy)
+    return z, lereng, xx, yy, rng
+
+
+def akumulasi_mfd(z, p=1.1):
+    """Luas tangkapan (jumlah sel) dengan aliran banyak arah: setiap sel membagi alirannya ke semua tetangga
+    yang lebih rendah sebanding dengan (penurunan)^p, diproses dari sel tertinggi ke terendah."""
+    n, m = z.shape
+    akum = np.ones(n * m)
+    zf = z.ravel()
+    tetangga = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+    for idx in np.argsort(zf)[::-1]:
+        i, j = divmod(idx, m)
+        tujuan, bobot = [], []
+        for di, dj in tetangga:
+            ii, jj = i + di, j + dj
+            if 0 <= ii < n and 0 <= jj < m:
+                turun = (zf[idx] - z[ii, jj]) / np.hypot(di, dj)
+                if turun > 0:
+                    tujuan.append(ii * m + jj)
+                    bobot.append(turun ** p)
+        if tujuan:
+            b = np.array(bobot)
+            akum[tujuan] += akum[idx] * b / b.sum()
+    return akum.reshape(n, m)
+
+
+def twi(z, lereng, sel=30.0):
+    a = akumulasi_mfd(z) * sel         # luas tangkapan spesifik (m²/m)
+    return np.log(a / np.maximum(lereng, 0.002))
+
+
+def blok_kebun(xx, yy, rng, kolom=6, baris=6):
+    """Indeks tajuk per blok kebun (umur tanam berbeda) dengan jalan di antara blok."""
+    bx = np.minimum((xx * kolom).astype(int), kolom - 1)
+    by = np.minimum((yy * baris).astype(int), baris - 1)
+    blok = by * kolom + bx
+    nilai = rng.uniform(0.62, 0.86, kolom * baris)
+    nilai[[8, 27]] = rng.uniform(0.30, 0.38, 2)          # blok tanaman muda
+    nilai[21] = 0.18                                     # blok peremajaan (tanah terbuka)
+    indeks = nilai[blok] + rng.normal(0, 0.015, xx.shape)
+    jalan = (np.abs(xx * kolom - np.round(xx * kolom)) < 0.03) | (np.abs(yy * baris - np.round(yy * baris)) < 0.03)
+    indeks[jalan] = 0.12
+    return indeks, jalan
 
 
 # ---------------------------------------------------------------- Gambar 8.1
-def g01_kerangka_tumpukan_scorpan():
-    fig, ax = kanvas(10, 4.8, (0, 104), (0, 50))
+def g01_kovariat():
+    z, lereng, xx, yy, rng = lanskap()
+    t = twi(z, lereng)
+    ndvi, jalan = blok_kebun(xx, yy, rng)
+    lembah = 0.52 + 0.15 * (yy - 0.5)
+    geologi = np.where(xx < lembah, 0, 1)                         # dua satuan batuan di kedua bukit
+    geologi[ndimage.gaussian_filter(z, 2) < np.quantile(z, 0.2)] = 2   # endapan aluvial di bagian terendah
+    n = z.shape[0]
+    titik = np.column_stack([rng.uniform(4, n - 5, 40), rng.uniform(4, n - 5, 40)])
 
-    # Kolom Kiri: 5 Kelompok Kovariat SCORPAN (22 Layer)
-    kotak(ax, 1.0, 2.0, 34.0, 46.0, isi=WARNA["latar"], warna=WARNA["navy"], lw=1.3, r=1.0, zorder=1)
-    ax.text(18.0, 45.5, "Tumpukan 22 Kovariat SCORPAN\n(Grid Spasial Seragam)", ha="center", va="center",
-            fontsize=8.8, fontweight="bold", color=WARNA["navy"])
-
-    grup = [
-        ("R — Relief / Topografi (14 kovariat)", "Elevasi, Slope, Aspect, Curvature, Plan &\nProfile Curv., TWI, TPI, Valley Depth,\nCNBL, LS Factor, MrVBF, MrRTF, Landform", WARNA["teal"], 33.5, 9.2),
-        ("O — Organisme / Vegetasi (5 kovariat)", "NDVI, SAVI, EVI, NDWI (Sentinel-2A)\n& Peta Penggunaan Lahan (Foto Udara)", WARNA["hijau"], 24.5, 7.6),
-        ("S — Tanah Permukaan (1 kovariat)", "Clay Index (SWIR1 / SWIR2 Sentinel-2A)", WARNA["oranye"], 18.0, 5.2),
-        ("P — Bahan Induk / Litologi (1 kovariat)", "Satuan Material Tutupan (Breksi, Tuf, Aluvial)", WARNA["tanah"], 11.5, 5.2),
-        ("N — Posisi Relatif Ruang (1 kovariat)", "Jarak Euklides terhadap Jaringan Sungai", WARNA["biru"], 5.0, 5.2),
-    ]
-    for jdl, isi, col, y, h in grup:
-        kotak(ax, 2.5, y, 31.0, h, isi="white", warna=col, lw=1.2, r=0.6, zorder=3)
-        ax.text(18.0, y + h - 1.7, jdl, ha="center", va="center", fontsize=7.4, fontweight="bold", color=col, zorder=4)
-        ax.text(18.0, y + (h - 1.8) / 2, isi, ha="center", va="center", fontsize=6.7, color=WARNA["teks"], linespacing=1.1, zorder=4)
-
-    # Kolom Tengah: Ekstraksi Matriks Desain & Seleksi Fitur
-    panah(ax, 35.3, 25.0, 39.2, 25.0, warna=WARNA["navy"], lw=1.5)
-    kotak(ax, 39.5, 6.0, 27.5, 38.0, isi=WARNA["putih"], warna=WARNA["ungu"], lw=1.4, r=1.0, zorder=2)
-    kotak(ax, 39.5, 38.5, 27.5, 5.5, isi=WARNA["ungu"], warna=WARNA["ungu"], lw=0, r=0.9, zorder=3)
-    ax.text(53.25, 41.2, "Kalibrasi & Seleksi Fitur\npada Lokasi Sampel (N = 50)", ha="center", va="center",
-            fontsize=8.3, fontweight="bold", color="white", zorder=4)
-
-    tahap_tengah = [
-        ("1. Ekstraksi Nilai Piksel", "Tumpangsusun 50 titik sampel\n(Lapisan 0–20 & 20–40 cm)\n→ Matriks X (50×22) & vektor y", 28.0),
-        ("2. Penanganan Imbalance", "Resampling SMOGN pada\ndaerah ekor distribusi tekstur\nyang jarang terwakili", 17.5),
-        ("3. Seleksi Fitur (RFE)", "Recursive Feature Elimination\nmemilih 5–10 prediktor paling\nberpengaruh per fraksi", 7.2),
-    ]
-    for jdl, isi, y in tahap_tengah:
-        kotak(ax, 41.2, y, 24.1, 9.0, isi=WARNA["latar"], warna=WARNA["abu_muda"], lw=1.0, r=0.6, zorder=3)
-        ax.text(53.25, y + 6.9, jdl, ha="center", va="center", fontsize=7.5, fontweight="bold", color=WARNA["navy"], zorder=4)
-        ax.text(53.25, y + 3.0, isi, ha="center", va="center", fontsize=6.8, color=WARNA["teks"], linespacing=1.12, zorder=4)
-
-    # Kolom Kanan: Prediksi Spasial & Kuantifikasi Ketidakpastian
-    panah(ax, 67.3, 25.0, 71.2, 25.0, warna=WARNA["navy"], lw=1.5)
-    kotak(ax, 71.5, 6.0, 31.0, 38.0, isi=WARNA["putih"], warna=WARNA["tanah"], lw=1.5, r=1.0, zorder=2)
-    kotak(ax, 71.5, 38.5, 31.0, 5.5, isi=WARNA["tanah"], warna=WARNA["tanah"], lw=0, r=0.9, zorder=3)
-    ax.text(87.0, 41.2, "Inferensi Spasial DSM\n& Evaluasi Model", ha="center", va="center",
-            fontsize=8.5, fontweight="bold", color="white", zorder=4)
-
-    keluaran = [
-        ("Model Ensemble Terlatih", "RF, QRF, CatBoost, & Stacking\n(validasi silang LOOCV / k-Fold:\nR², RMSE, MAE, CCC)", WARNA["navy"], 28.0),
-        ("Peta Prediksi Kontinu", "Sebaran spasial Pasir, Debu,\n& Lempung (%) pada Lapisan 1\ndan Lapisan 2 di seluruh DAS", WARNA["hijau"], 17.5),
-        ("Peta Residual & Uncertainty", "Interval prediksi 90% ($\\text{PIR}_{90}$)\n& zona manajemen lahan\n(erosional vs deposisional)", WARNA["merah"], 7.2),
-    ]
-    for jdl, isi, col, y in keluaran:
-        kotak(ax, 73.2, y, 27.6, 9.0, isi=WARNA["latar"], warna=col, lw=1.1, r=0.6, zorder=3)
-        ax.text(87.0, y + 6.9, jdl, ha="center", va="center", fontsize=7.5, fontweight="bold", color=col, zorder=4)
-        ax.text(87.0, y + 3.0, isi, ha="center", va="center", fontsize=6.8, color=WARNA["teks"], linespacing=1.12, zorder=4)
-
-    simpan(fig, MODUL, "M8-G01_kerangka-tumpukan-kovariat-scorpan.png")
+    peta = [("(a) Elevasi (r)", z, ramp("el", "#F3E3CF", WARNA["tanah"]), "m", 0),
+            ("(b) Kemiringan lereng (r)", lereng * 100, ramp("lr", "#FDEBD9", "#B4501A"), "%", 0),
+            ("(c) Indeks kebasahan topografi (r)", t, ramp("tw", WARNA["biru_muda"], WARNA["navy"]), "TWI", 0),
+            ("(d) Indeks vegetasi tajuk (o)", ndvi, ramp("nd", "#EEF6E8", "#2F6B1F"), "NDVI", 1)]
+    fig, axs = plt.subplots(2, 3, figsize=(10, 7.0))
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.08, wspace=0.08, hspace=0.32)
+    for ax, (judul, data, cmap, satuan, d) in zip(axs.ravel()[:4], peta):
+        im = ax.imshow(data, cmap=cmap, interpolation="nearest")
+        cb = fig.colorbar(im, ax=ax, orientation="horizontal", fraction=0.046, pad=0.03)
+        cb.ax.tick_params(labelsize=7.2)
+        cb.ax.xaxis.set_major_formatter(KOMA(d))
+        cb.set_label(satuan, fontsize=7.6)
+        ax.set_title(judul, fontsize=9.2, pad=4)
+    ax = axs[1, 1]
+    warna_geo = ["#E8D3B9", "#CFE5D6", "#DCD3EC"]
+    ax.imshow(geologi, cmap=ListedColormap(warna_geo), interpolation="nearest")
+    for k, nama in enumerate(["Satuan A", "Satuan B", "Aluvium"]):
+        iy, ix = np.argwhere(geologi == k).mean(axis=0)
+        ax.text(ix, iy, nama, ha="center", va="center", fontsize=8, color=WARNA["teks"],
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.7))
+    ax.set_title("(e) Satuan geologi (p)", fontsize=9.2, pad=4)
+    cb_kosong = fig.colorbar(plt.cm.ScalarMappable(cmap=ListedColormap(warna_geo)), ax=ax, orientation="horizontal",
+                             fraction=0.046, pad=0.03)
+    cb_kosong.ax.set_visible(False)                      # menjaga ukuran panel tetap sama
+    ax = axs[1, 2]
+    sinar = np.clip(0.75 + 0.35 * (np.gradient(z)[1] - np.gradient(z)[0]) / 2.0, 0, 1)
+    ax.imshow(sinar, cmap="gray", vmin=0, vmax=1.1, interpolation="nearest")
+    ax.imshow(np.ma.masked_where(~jalan, jalan), cmap=ListedColormap(["#FFFFFF"]), alpha=0.6, interpolation="nearest")
+    ax.scatter(titik[:, 0], titik[:, 1], s=22, c=WARNA["oranye"], edgecolors="white", linewidths=0.8, zorder=3)
+    ax.set_title("(f) Titik sampel tanah", fontsize=9.2, pad=4)
+    cb_kosong = fig.colorbar(plt.cm.ScalarMappable(cmap="gray"), ax=ax, orientation="horizontal", fraction=0.046,
+                             pad=0.03)
+    cb_kosong.ax.set_visible(False)
+    for a in axs.ravel():
+        a.set_xticks([]), a.set_yticks([])
+    fig.text(0.02, 0.012, "Data sintetis; huruf dalam kurung = faktor SCORPAN. Garis putih pada (d) dan (f) = jalan kebun; "
+             "nilai semua lapisan diambil di setiap titik pada (f).", fontsize=7.4, style="italic", color=WARNA["abu"])
+    simpan(fig, MODUL, "M8-G01_kovariat-scorpan-sebagai-lapisan-raster.png")
 
 
 # ---------------------------------------------------------------- Gambar 8.2
-def g02_komparasi_algoritma():
-    fig, ax = kanvas(10, 5.0, (0, 104), (0, 52))
+def sampel_mengelompok(rng):
+    """Sampel warisan yang mengelompok di beberapa lokasi survei dan di sepanjang jalan."""
+    pusat = np.array([[0.7, 0.6], [1.6, 2.3], [2.9, 0.9], [3.4, 2.4]])
+    kelompok = np.vstack([c + rng.normal(0, 0.18, (14, 2)) for c in pusat])
+    jalan = np.column_stack([rng.uniform(0.2, 3.8, 24), np.full(24, 1.5) + rng.normal(0, 0.05, 24)])
+    xy = np.vstack([kelompok, jalan])
+    return np.clip(xy, [0.08, 0.08], [3.92, 2.92])
 
-    algos = [
-        ("(a) Random Forest (RF)",
-         "Bagging Paralel Pohon Keputusan",
-         "• Bootstrap sampling (in-bag ~63,2%,\n  out-of-bag ~36,8% sampel)\n"
-         "• Sub-sampel acak fitur (mtry) di\n  setiap simpul percabangan\n"
-         "• Prediksi akhir = rata-rata aritmetika\n  dari $B$ pohon independen:\n"
-         "  $\\hat{y}(x) = (1/B) \\sum T_b(x)$\n"
-         "• Kuat menekan varians & tahan\n  terhadap multikolinearitas",
-         "Peran: Penaksir nilai tengah\nyang stabil pada nonlinieritas",
-         WARNA["biru"]),
-        ("(b) Quantile Regression Forest (QRF)",
-         "Estimasi Distribusi Bersyarat Penuh",
-         "• Menyimpan seluruh nilai observasi\n  di setiap simpul daun (bukan hanya\n  rata-rata daun seperti RF)\n"
-         "• Menghitung bobot kesamaan $w_i(x)$\n  untuk membangun fungsi sebaran\n  kumulatif empiris $\\hat{F}(y \\mid X = x)$\n"
-         "• Menghasilkan kuantil prediksi:\n  $q_{0,05}$, median $q_{0,50}$, dan $q_{0,95}$\n"
-         "• Mengukur ketidakpastian piksel",
-         "Peran: Kuantifikasi rentang\nketidakpastian spasial ($\\text{PIR}_{90}$)",
-         WARNA["teal"]),
-        ("(c) CatBoost (Gradient Boosting)",
-         "Boosting Sekuensial Pohon Simetris",
-         "• Membangun pohon secara berurutan;\n  pohon ke-m mengoreksi residual\n  (gradien galat) pohon sebelumnya\n"
-         "• Menggunakan oblivious decision trees\n  (kriteria belah sama per aras kedalaman)\n"
-         "• Ordered boosting mencegah kebocoran\n  target (target leakage) pada N kecil\n"
-         "• Sangat peka menangkap interaksi\n  kovariat kategorikal & kontinu",
-         "Peran: Menurunkan bias prediksi\npada hubungan kompleks",
-         WARNA["oranye"]),
-        ("(d) Stacking Ensemble (Meta-Model)",
-         "Kombinasi Optimal Multi-Algoritma",
-         "• Aras-0 (Base Learners): melatih RF,\n  QRF, dan CatBoost secara paralel\n"
-         "• Prediksi out-of-fold [$\\hat{y}_{\\mathrm{RF}}, \\hat{y}_{\\mathrm{QRF}}, \\hat{y}_{\\mathrm{CB}}$]\n  dijadikan fitur masukan bagi Aras-1\n"
-         "• Aras-1 (Meta-Learner): mengestimasi\n  bobot kombinasi optimal $\\alpha_k$ guna\n  meminimumkan galat kuadrat:\n"
-         "  $\\hat{y}_{\\mathrm{stack}} = \\alpha_0 + \\sum \\alpha_k \\hat{y}_k(x)$\n"
-         "• Menggabungkan kekuatan tiap model",
-         "Peran: Akurasi tertinggi pada\nseluruh fraksi tekstur Bompon",
-         WARNA["navy"]),
-    ]
 
-    w = 23.6
-    jarak = 25.4
-    for i, (judul, sub, butir, peran, warna) in enumerate(algos):
-        x = 1.6 + i * jarak
-        kotak(ax, x, 2.0, w, 47.5, isi=WARNA["putih"], warna=warna, lw=1.5, r=1.0, zorder=2)
-        kotak(ax, x + 0.7, 43.2, w - 1.4, 5.5, isi=warna, warna=warna, lw=0, r=0.7, zorder=4)
-        ax.text(x + w / 2, 45.95, judul, ha="center", va="center", fontsize=7.6, fontweight="bold", color="white", zorder=5)
-        ax.text(x + w / 2, 40.2, sub, ha="center", va="center", fontsize=7.3, fontweight="bold", color=warna, zorder=4)
-        ax.text(x + 1.4, 24.5, butir, ha="left", va="center", fontsize=6.7, color=WARNA["teks"], linespacing=1.22, zorder=4)
-        kotak(ax, x + 1.2, 3.5, w - 2.4, 6.2, isi=WARNA["latar"], warna=warna, lw=0.9, r=0.6, zorder=3)
-        ax.text(x + w / 2, 6.6, peran, ha="center", va="center", fontsize=6.9, fontweight="bold", color=warna, linespacing=1.15, zorder=4)
+def latar_kebun(ax):
+    ax.add_patch(Rectangle((0, 0), 4, 3, fc=WARNA["latar"], ec=WARNA["abu_muda"], lw=0.8, zorder=0))
+    for x in np.arange(0.5, 4, 0.5):
+        ax.plot([x, x], [0, 3], color="white", lw=1.4, zorder=0.5)
+    for y in np.arange(0.5, 3, 0.5):
+        ax.plot([0, 4], [y, y], color="white", lw=1.4, zorder=0.5)
+    ax.set_xlim(-0.05, 4.05)
+    ax.set_ylim(-0.05, 3.05)
+    ax.set_aspect("equal")
+    ax.set_xticks([]), ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_visible(False)
 
-    simpan(fig, MODUL, "M8-G02_komparasi-algoritma-rf-qrf-catboost-stacking.png")
+
+def g02_pembagian_data():
+    rng = np.random.default_rng(12)
+    xy = sampel_mengelompok(rng)
+    n = len(xy)
+    fig, axs = plt.subplots(2, 2, figsize=(10, 7.9))
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.08, wspace=0.06, hspace=0.30)
+    for ax in axs.ravel():
+        latar_kebun(ax)
+
+    ax = axs[0, 0]                                         # (a) pembagian tunggal
+    uji = rng.permutation(n)[: n // 3]
+    latih = np.setdiff1d(np.arange(n), uji)
+    ax.scatter(*xy[latih].T, s=30, c=KATEGORI[0], marker="o", edgecolors="white", linewidths=0.8, label="data latih (2/3)")
+    ax.scatter(*xy[uji].T, s=36, c=KATEGORI[1], marker="^", edgecolors="white", linewidths=0.8, label="data uji (1/3)")
+    ax.set_title("(a) Pembagian tunggal acak", fontsize=9.6, loc="left")
+
+    ax = axs[0, 1]                                         # (b) lipat-5 acak
+    lipat = rng.permutation(np.arange(n) % 5)
+    for k in range(5):
+        ax.scatter(*xy[lipat == k].T, s=30, c=KATEGORI[k], marker=PENANDA[k], edgecolors="white", linewidths=0.8,
+                   label=f"lipatan {k + 1}")
+    ax.set_title("(b) Validasi silang acak 5 lipatan", fontsize=9.6, loc="left")
+
+    ax = axs[1, 0]                                         # (c) blok spasial
+    _, blok = kmeans2(xy, 5, seed=3, minit="++")
+    urut = np.argsort(np.argsort([xy[blok == k, 0].mean() for k in range(5)]))
+    for k in range(5):
+        m = urut[blok] == k
+        ax.scatter(*xy[m].T, s=30, c=KATEGORI[k], marker=PENANDA[k], edgecolors="white", linewidths=0.8,
+                   label=f"blok {k + 1}")
+    ax.set_title("(c) Validasi silang spasial 5 blok", fontsize=9.6, loc="left")
+
+    ax = axs[1, 1]                                         # (d) sampel probabilitas independen
+    strata = [(0, 0, 2, 1.5), (2, 0, 2, 1.5), (0, 1.5, 2, 1.5), (2, 1.5, 2, 1.5)]
+    for x0, y0, w, h in strata:
+        ax.add_patch(Rectangle((x0, y0), w, h, fill=False, ec=WARNA["abu"], lw=1.0, ls="--", zorder=1))
+    baru = np.vstack([np.column_stack([rng.uniform(x0 + 0.1, x0 + w - 0.1, 3), rng.uniform(y0 + 0.1, y0 + h - 0.1, 3)])
+                      for x0, y0, w, h in strata])
+    ax.scatter(*xy.T, s=24, c=KATEGORI[0], marker="o", edgecolors="white", linewidths=0.8, alpha=0.9,
+               label="data latih (semua sampel lama)")
+    ax.scatter(*baru.T, s=46, c=KATEGORI[1], marker="^", edgecolors="white", linewidths=0.8,
+               label="sampel validasi baru (acak berstrata)")
+    ax.plot([], [], color=WARNA["abu"], ls="--", lw=1.0, label="batas strata")
+    ax.set_title("(d) Sampel probabilitas independen", fontsize=9.6, loc="left")
+
+    for ax in axs.ravel():
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.01), ncol=5 if ax in (axs[0, 1], axs[1, 0]) else 3,
+                  fontsize=7.6, handletextpad=0.3, columnspacing=0.9, frameon=False)
+    fig.text(0.02, 0.005, "Data sintetis; kotak putih = blok kebun 500 m × 500 m. Sampel lama mengelompok di empat lokasi "
+             "survei dan di sepanjang jalan utama.", fontsize=7.4, style="italic", color=WARNA["abu"])
+    simpan(fig, MODUL, "M8-G02_skema-pembagian-data.png")
 
 
 # ---------------------------------------------------------------- Gambar 8.3
-def g03_validasi_dan_smogn():
-    fig = plt.figure(figsize=(10, 4.4))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1.08, 1.0], left=0.02, right=0.98, top=0.86, bottom=0.15, wspace=0.20)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
+def g03_alur():
+    fig, ax = kanvas(10, 6.2, (0, 104), (0, 66))
+    abu = WARNA["abu"]
 
-    # Panel (a): Skema k-Fold / LOOCV & Spatial Block CV
-    ax1.set_xlim(0, 56)
-    ax1.set_ylim(0, 44)
-    ax1.set_aspect("equal")
-    ax1.axis("off")
-    ax1.set_title("(a) Skema partisi validasi silang (k-Fold / LOOCV)\ndan pencegahan kebocoran autokorelasi spasial", fontsize=9.0)
+    def node(x, y, teks, w=20, h=6.5, isi=WARNA["putih"], warna=WARNA["navy"], tebal=False):
+        kotak(ax, x, y, w, h, teks, isi=isi, warna=warna, ukuran=7.8, tebal=tebal, r=0.7, lw=1.0)
 
-    kotak(ax1, 1.0, 2.0, 54.0, 39.5, isi=WARNA["latar"], warna=WARNA["abu_muda"], lw=1.0, r=0.9, zorder=1)
-    ax1.text(28.0, 38.5, "Iterasi Validasi Silang (Cross-Validation):", ha="center", fontsize=8.0, fontweight="bold", color=WARNA["navy"])
+    def ke(x1, y1, x2, y2, putus=False):
+        panah(ax, x1, y1, x2, y2, warna=abu, lw=1.0, skala=9, putus=putus)
 
-    for r in range(5):
-        y = 31.5 - r * 4.5
-        ax1.text(6.5, y + 1.5, f"Lipatan {r+1}", ha="center", va="center", fontsize=7.2, fontweight="bold", color=WARNA["teks"])
-        for c in range(5):
-            x = 12.5 + c * 8.0
-            is_val = (r == c)
-            fc = WARNA["oranye"] if is_val else WARNA["biru"]
-            lbl = "Uji" if is_val else "Latih"
-            ax1.add_patch(Rectangle((x, y), 7.2, 3.1, fc=fc, ec="white", lw=0.8, zorder=3))
-            ax1.text(x + 3.6, y + 1.55, lbl, ha="center", va="center", fontsize=6.8, color="white", fontweight="bold", zorder=4)
+    def garis(xs, ys):
+        ax.plot(xs, ys, color=abu, lw=1.0, ls="--", zorder=1)
 
-    kotak(ax1, 2.5, 3.5, 51.0, 8.2, isi="white", warna=WARNA["navy"], lw=1.0, r=0.6, zorder=3)
-    ax1.text(28.0, 7.6, "• LOOCV (N = 50): 49 titik melatih model, 1 titik menguji (diulang 50 kali)\n"
-                        "• Spatial Block CV: membagi lipatan menurut blok koordinat/sub-DAS\n"
-                        "  agar titik uji tidak bertetangga dekat dengan titik latih",
-             ha="center", va="center", fontsize=6.9, color=WARNA["teks"], linespacing=1.2, zorder=4)
-
-    # Panel (b): Ilustrasi SMOGN dan Smoothing of Distribution Tails
-    rng = np.random.default_rng(12)
-    x_grid = np.linspace(35, 85, 300)
-    # Distribusi asli (miring ke lempung tinggi ~63%, ekor kiri jarang di 38-50%)
-    dens_asli = 0.78 * np.exp(-0.5 * ((x_grid - 64.5) / 6.2) ** 2) + 0.18 * np.exp(-0.5 * ((x_grid - 46.0) / 5.5) ** 2)
-    dens_asli /= np.trapezoid(dens_asli, x_grid)
-    # Distribusi setelah SMOGN (menambah sampel sintetis di ekor 38-52% dan memangkas mayoritas)
-    dens_smogn = 0.56 * np.exp(-0.5 * ((x_grid - 64.0) / 6.5) ** 2) + 0.44 * np.exp(-0.5 * ((x_grid - 47.5) / 5.8) ** 2)
-    dens_smogn /= np.trapezoid(dens_smogn, x_grid)
-    # Distribusi prediksi akhir (efek smoothing of distribution tails: SD menyempit)
-    dens_pred = np.exp(-0.5 * ((x_grid - 62.3) / 4.6) ** 2)
-    dens_pred /= np.trapezoid(dens_pred, x_grid)
-
-    ax2.plot(x_grid, dens_asli, color=WARNA["navy"], lw=2.0, label="Observasi asli (N = 50, timpang)")
-    ax2.fill_between(x_grid, 0, dens_asli, where=(x_grid <= 53), color=WARNA["oranye"], alpha=0.28, label="Zona langka (oversampling SMOGN)")
-    ax2.plot(x_grid, dens_smogn, "--", color=WARNA["oranye"], lw=1.8, label="Distribusi latih pasca-SMOGN")
-    ax2.plot(x_grid, dens_pred, "-.", color=WARNA["teal"], lw=1.8, label="Prediksi peta (smoothing of tails)")
-
-    ax2.annotate("Penambahan titik\nsintetis (SMOGN)", xy=(46.5, 0.032), xytext=(42.0, 0.062),
-                 arrowprops=dict(arrowstyle="->", color=WARNA["oranye"], lw=1.1),
-                 fontsize=7.3, fontweight="bold", color=WARNA["oranye"], ha="center")
-    ax2.annotate("Penyempitan ekor\nprediksi (STD turun)", xy=(62.3, 0.082), xytext=(74.5, 0.072),
-                 arrowprops=dict(arrowstyle="->", color=WARNA["teal"], lw=1.1),
-                 fontsize=7.3, fontweight="bold", color=WARNA["teal"], ha="center")
-
-    ax2.set_xlim(35, 85)
-    ax2.set_ylim(0, 0.095)
-    ax2.set_xlabel("Kadar fraksi lempung (%)", fontsize=8.8)
-    ax2.set_ylabel("Kerapatan probabilitas", fontsize=8.8)
-    ax2.set_title("(b) Penyeimbangan distribusi target dengan SMOGN\ndan efek penghalusan ekor prediksi", fontsize=9.0)
-    ax2.legend(loc="upper left", fontsize=7.1, framealpha=0.9)
-    ax2.grid(color=WARNA["abu_muda"], lw=0.5)
-
-    simpan(fig, MODUL, "M8-G03_skema-validasi-dan-resampling-smogn.png")
+    # masukan dan penyiapan
+    node(2, 44, "Data tanah\n(sampel lapangan, data\nwarisan, sensor proksimal)", w=24, h=9, isi="#F3E3CF",
+         warna=WARNA["tanah"], tebal=True)
+    node(2, 22, "Kovariat SCORPAN\n(citra, DEM, iklim,\ngeologi, peta tanah)", w=24, h=9, isi="#DCEAF7",
+         warna=WARNA["biru"], tebal=True)
+    node(30, 45, "Pemeriksaan mutu dan\npenyetaraan kedalaman", w=22, h=7)
+    node(30, 23, "Penyelarasan proyeksi\ndan resolusi", w=22, h=7)
+    ke(26, 48.5, 30, 48.5), ke(26, 26.5, 30, 26.5)
+    # rantai pemodelan
+    rantai = [("Penumpangan (overlay):\ntabel pemodelan", "#EAF3E2", WARNA["teal"]), ("Seleksi kovariat", None, None),
+              ("Pembagian data", None, None), ("Penalaan dan\npembangunan model", None, None),
+              ("Validasi\n(ME, RMSE, MEC, PICP)", "#FFF6E5", WARNA["oranye"])]
+    tinggi = [50, 39.5, 29, 18.5, 8]
+    for (t, isi, warna), y in zip(rantai, tinggi):
+        node(58, y, t, isi=isi or WARNA["putih"], warna=warna or WARNA["navy"], tebal=y == 50)
+    for y1, y2 in zip(tinggi[:-1], tinggi[1:]):
+        ke(68, y1, 68, y2 + 6.6)
+    ke(52, 48.5, 58, 53.25), ke(52, 26.5, 58, 52.4)
+    # umpan balik dari validasi ke seleksi kovariat
+    garis([58, 56.8, 56.8], [11.25, 11.25, 42.75])
+    ke(56.8, 42.75, 58, 42.75, putus=True)
+    ax.text(55.7, 27, "perbaiki bila perlu", rotation=90, ha="center", va="center", fontsize=7.4, color=abu,
+            style="italic")
+    # keluaran
+    hasil = ["Peta prediksi", "Peta ketidakpastian", "Peta residual dan AOA"]
+    for i, t in enumerate(hasil):
+        node(83, 26 - i * 9, t, w=19, h=6.5, isi="#DCEAF7", tebal=i == 0)
+    ax.plot([80.5, 80.5], [11.25, 29.25], color=abu, lw=1.0, zorder=1)
+    ax.plot([78, 80.5], [11.25, 11.25], color=abu, lw=1.0, zorder=1)
+    for i in range(3):
+        ke(80.5, 29.25 - i * 9, 83, 29.25 - i * 9)
+    # siklus sampel tambahan
+    garis([102, 103, 103, 14, 14], [20.25, 20.25, 61, 61, 57.5])
+    ke(14, 57.5, 14, 53.1, putus=True)
+    ax.text(58.5, 62.3, "sampel tambahan di daerah yang paling tidak pasti atau di luar AOA", ha="center", fontsize=7.6,
+            color=abu, style="italic")
+    simpan(fig, MODUL, "M8-G03_alur-pemodelan-dsm.png")
 
 
 # ---------------------------------------------------------------- Gambar 8.4
-def g04_perbandingan_akurasi_bompon():
-    target_urut = ["Pasir L1", "Pasir L2", "Debu L1", "Debu L2", "Lempung L1", "Lempung L2"]
-    model_urut = ["RF", "QRF", "CatBoost", "Stacking"]
-    warna_m = {"RF": WARNA["biru"], "QRF": WARNA["abu"], "CatBoost": WARNA["oranye"], "Stacking": WARNA["navy"]}
+def kov_eksponensial(h, sill=4.0, jangkauan=250.0):
+    return sill * np.exp(-h / jangkauan)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.6))
-    fig.subplots_adjust(left=0.07, right=0.98, top=0.84, bottom=0.18, wspace=0.22)
 
-    x = np.arange(len(target_urut))
-    w = 0.18
+def g04_residual():
+    rng = np.random.default_rng(7)
+    x = np.linspace(0, 2000, 401)
+    kovariat = 3 + 2.5 * np.sin(x / 330) + 1.2 * np.cos(x / 140)
+    C = kov_eksponensial(np.abs(x[:, None] - x[None, :])) + 1e-9 * np.eye(x.size)
+    komponen = np.linalg.cholesky(C) @ rng.normal(0, 1, x.size)
+    benar = 18 + 2.2 * kovariat + komponen
+    io = np.sort(rng.choice(x.size, 26, replace=False))
+    obs = benar[io] + rng.normal(0, 0.5, io.size)
+    A = np.column_stack([np.ones(io.size), kovariat[io]])
+    koef = np.linalg.lstsq(A, obs, rcond=None)[0]
+    tren = koef[0] + koef[1] * kovariat
+    resid = obs - tren[io]
+    Coo = kov_eksponensial(np.abs(x[io][:, None] - x[io][None, :])) + 0.25 * np.eye(io.size)
+    Cpo = kov_eksponensial(np.abs(x[:, None] - x[io][None, :]))
+    resid_krig = Cpo @ np.linalg.solve(Coo, resid)
+    akhir = tren + resid_krig
+    rmse = lambda p: np.sqrt(np.mean((p - benar) ** 2))  # noqa: E731
 
-    # Panel (a): R2 dengan SMOGN vs Stacking tanpa SMOGN
-    for idx, m in enumerate(model_urut):
-        vals = [DATA_EMPIRIS["kinerja_dengan_smogn"][t][m][0] for t in target_urut]
-        ax1.bar(x + (idx - 1.5) * w, vals, width=w, color=warna_m[m], label=f"{m} (SMOGN)")
-    st_asli = [DATA_EMPIRIS["kinerja_tanpa_smogn"][t]["Stacking"][0] for t in target_urut]
-    ax1.plot(x + 1.5 * w, st_asli, "D--", color=WARNA["merah"], markersize=5, lw=1.2, label="Stacking (Tanpa SMOGN)")
-
-    ax1.axhline(0, color=WARNA["teks"], lw=0.8)
-    ax1.set_xticks(x, target_urut, fontsize=8.0, rotation=15)
-    ax1.set_ylim(-0.36, 0.30)
-    ax1.set_ylabel("Koefisien Determinasi ($R^2$)", fontsize=8.8)
-    ax1.set_title("(a) Perbandingan nilai $R^2$ validasi silang\nmenurut algoritma dan penerapan SMOGN", fontsize=9.0)
-    ax1.legend(loc="lower right", fontsize=7.0, ncol=2, framealpha=0.92)
-    ax1.grid(axis="y", color=WARNA["abu_muda"], lw=0.5)
-
-    # Panel (b): RMSE dengan SMOGN
-    for idx, m in enumerate(model_urut):
-        vals = [DATA_EMPIRIS["kinerja_dengan_smogn"][t][m][1] for t in target_urut]
-        ax2.bar(x + (idx - 1.5) * w, vals, width=w, color=warna_m[m], label=f"{m} (SMOGN)")
-    rmse_asli = [DATA_EMPIRIS["kinerja_tanpa_smogn"][t]["Stacking"][1] for t in target_urut]
-    ax2.plot(x + 1.5 * w, rmse_asli, "D--", color=WARNA["merah"], markersize=5, lw=1.2, label="Stacking (Tanpa SMOGN)")
-
-    ax2.set_xticks(x, target_urut, fontsize=8.0, rotation=15)
-    ax2.set_ylim(0, 11.8)
-    ax2.set_ylabel("Root Mean Square Error (RMSE, %)", fontsize=8.8)
-    ax2.set_title("(b) Perbandingan galat RMSE (%) antar-model\npada Lapisan 1 (0–20 cm) dan Lapisan 2 (20–40 cm)", fontsize=9.0)
-    ax2.legend(loc="upper left", fontsize=7.0, ncol=2, framealpha=0.92)
-    ax2.grid(axis="y", color=WARNA["abu_muda"], lw=0.5)
-
-    simpan(fig, MODUL, "M8-G04_perbandingan-akurasi-model-bompon.png")
+    fig, axs = plt.subplots(3, 1, figsize=(9.6, 7.8), sharex=True)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.94, bottom=0.08, hspace=0.42)
+    gaya_benar = dict(color=WARNA["abu"], lw=1.0, alpha=0.7)
+    axs[0].plot(x, benar, label="nilai sebenarnya", **gaya_benar)
+    axs[0].plot(x, tren, color=KATEGORI[0], lw=2, label="prediksi tren dari kovariat")
+    axs[0].scatter(x[io], obs, s=26, c=WARNA["teks"], zorder=3, label="pengamatan")
+    axs[0].set_title("(a) Pengamatan dan prediksi model tren", fontsize=9.6, loc="left")
+    axs[1].axhline(0, color=WARNA["abu"], lw=0.8)
+    axs[1].plot(x, resid_krig, color=KATEGORI[1], lw=2, label="residual hasil kriging")
+    axs[1].scatter(x[io], resid, s=26, c=KATEGORI[1], edgecolors="white", linewidths=0.8, zorder=3,
+                   label="residual di titik pengamatan")
+    axs[1].set_title("(b) Residual berautokorelasi spasial dan hasil kriging-nya", fontsize=9.6, loc="left")
+    axs[2].plot(x, benar, label="nilai sebenarnya", **gaya_benar)
+    axs[2].plot(x, akhir, color=WARNA["navy"], lw=2, label="tren + kriging residual")
+    axs[2].scatter(x[io], obs, s=26, c=WARNA["teks"], zorder=3, label="pengamatan")
+    axs[2].set_title(f"(c) Prediksi regression kriging (RMSE {koma(rmse(akhir), 2)}; model tren saja "
+                     f"{koma(rmse(tren), 2)})", fontsize=9.6, loc="left")
+    for ax, yl in zip(axs, ["Sifat tanah", "Residual", "Sifat tanah"]):
+        ax.set_ylabel(yl, fontsize=8.6)
+        ax.tick_params(labelsize=8)
+        ax.legend(fontsize=7.6, loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=3, frameon=False,
+                  handletextpad=0.4, columnspacing=1.0, borderaxespad=0.2)
+        ax.yaxis.set_major_locator(MultipleLocator(1 if yl == "Residual" else 5))
+        ax.yaxis.set_major_formatter(KOMA(0))
+    axs[2].set_xlabel("Jarak sepanjang transek (m)", fontsize=8.8)
+    axs[2].xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:,.0f}".replace(",", ".")))
+    fig.text(0.08, 0.008, "Data sintetis; model tren berupa regresi linear terhadap satu kovariat, residual diinterpolasi "
+             "dengan kriging sederhana bermodel eksponensial.", fontsize=7.4, style="italic", color=WARNA["abu"])
+    simpan(fig, MODUL, "M8-G04_residual-dan-regression-kriging.png")
 
 
 # ---------------------------------------------------------------- Gambar 8.5
-def g05_variable_importance_rfe():
-    fig, axs = plt.subplots(2, 3, figsize=(10, 6.2))
-    fig.subplots_adjust(left=0.14, right=0.98, top=0.88, bottom=0.12, wspace=0.48, hspace=0.38)
+def indeks_ketidakmiripan(latih, prediksi, lipat):
+    """DI menurut Meyer dan Pebesma (2021) dengan bobot kovariat yang sama.
 
-    warna_f = {"R": WARNA["teal"], "O": WARNA["hijau"], "S": WARNA["oranye"], "N": WARNA["biru"]}
-    Urut_panel = [
-        ("Pasir L1", "Pasir Lapisan 1 (0–20 cm)\n(5 kovariat terpilih RFE)"),
-        ("Debu L1", "Debu Lapisan 1 (0–20 cm)\n(10 kovariat terpilih RFE)"),
-        ("Lempung L1", "Lempung Lapisan 1 (0–20 cm)\n(5 kovariat terpilih RFE)"),
-        ("Pasir L2", "Pasir Lapisan 2 (20–40 cm)\n(10 kovariat terpilih RFE)"),
-        ("Debu L2", "Debu Lapisan 2 (20–40 cm)\n(5 kovariat terpilih RFE)"),
-        ("Lempung L2", "Lempung Lapisan 2 (20–40 cm)\n(10 kovariat terpilih RFE)"),
-    ]
-
-    for ax, (kunci, judul) in zip(axs.ravel(), Urut_panel):
-        items = DATA_EMPIRIS["variable_importance_rfe"][kunci]
-        lbls = [it[0] for it in items]
-        vals = [it[1] for it in items]
-        cols = [warna_f[it[2]] for it in items]
-        y_pos = np.arange(len(items))
-        ax.barh(y_pos, vals, color=cols, height=0.68)
-        ax.set_yticks(y_pos, lbls, fontsize=7.2)
-        ax.invert_yaxis()
-        ax.set_xlim(0, max(vals) * 1.24)
-        for yp, v in zip(y_pos, vals):
-            ax.text(v + 0.4, yp, f"{v:.1f}%".replace(".", ","), va="center", ha="left", fontsize=6.6, color=WARNA["teks"])
-        ax.set_xlabel("Importance (%)", fontsize=7.6)
-        ax.set_title(judul, fontsize=8.2)
-        ax.grid(axis="x", color=WARNA["abu_muda"], lw=0.5)
-
-    leg_f = [
-        Patch(fc=WARNA["teal"], label="R — Relief / Topografi (pengontrol dominan)"),
-        Patch(fc=WARNA["hijau"], label="O — Organisme / Indeks Vegetasi (NDVI, NDWI)"),
-        Patch(fc=WARNA["oranye"], label="S — Tanah (Clay Index SWIR1/SWIR2)"),
-        Patch(fc=WARNA["biru"], label="N — Posisi Relatif (Jarak dari sungai)"),
-    ]
-    fig.legend(handles=leg_f, loc="lower center", bbox_to_anchor=(0.5, 0.01), ncol=4, fontsize=7.5, frameon=False)
-    simpan(fig, MODUL, "M8-G05_tingkat-kepentingan-kovariat-rfe-bompon.png")
+    DI = jarak terdekat ke data latih dibagi rerata jarak antardata latih, pada kovariat yang telah dibakukan.
+    Ambang AOA = nilai maksimum DI data latih (dihitung antarlipatan) setelah pencilan disingkirkan.
+    """
+    rerata, sd = latih.mean(axis=0), latih.std(axis=0)
+    L, P = (latih - rerata) / sd, (prediksi - rerata) / sd
+    d = np.sqrt(((L[:, None, :] - L[None, :, :]) ** 2).sum(-1))
+    d_rerata = d[np.triu_indices(len(L), 1)].mean()
+    di_prediksi = cKDTree(L).query(P)[0] / d_rerata
+    di_latih = np.array([d[i, lipat != lipat[i]].min() for i in range(len(L))]) / d_rerata
+    q1, q3 = np.percentile(di_latih, [25, 75])
+    ambang = di_latih[di_latih <= q3 + 1.5 * (q3 - q1)].max()
+    return di_prediksi, ambang
 
 
-# ---------------------------------------------------------------- Gambar 8.6
-def g06_peta_prediksi_dan_ketidakpastian():
-    b, mask, pl, gt, ext = baca_sentinel2()
-    ind = hitung_indeks(b)
-    dem_ds = gdal.Open(os.path.join(gaya.AKAR, "Source", "Data Bompon", "terbuka", "copdem_glo30_30m.tif"))
-    dem_30 = dem_ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
-    gy30, gx30 = np.gradient(dem_30, 30.0, 30.0)
-    slp_30 = np.rad2deg(np.arctan(np.hypot(gx30, gy30)))
-    tan_b = np.maximum(np.hypot(gx30, gy30), 0.005)
-    tpi_30 = dem_30 - ndimage.uniform_filter(dem_30, size=7, mode="nearest")
-    uca_30 = 30.0 * (1.0 + 18.0 * np.exp(-0.22 * (tpi_30 - np.min(tpi_30))))
-    twi_30 = np.log(uca_30 / tan_b)
+def g05_ketidakpastian():
+    rng = np.random.default_rng(31)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4.9), gridspec_kw=dict(width_ratios=[1, 1.08]))
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.88, bottom=0.2, wspace=0.18)
 
-    # Interpolasi turunan DEM 30 m ke grid 10 m Sentinel-2 dengan penghalusan kubik bebas blok 30 m
-    rows, cols = mask.shape
-    zy, zx = rows / dem_30.shape[0], cols / dem_30.shape[1]
-    elev = ndimage.gaussian_filter(ndimage.zoom(dem_30, (zy, zx), order=3), sigma=1.4)
-    slp = ndimage.gaussian_filter(ndimage.zoom(slp_30, (zy, zx), order=3), sigma=1.2)
-    twi = ndimage.gaussian_filter(ndimage.zoom(twi_30, (zy, zx), order=3), sigma=1.2)
-    tpi = ndimage.gaussian_filter(ndimage.zoom(tpi_30, (zy, zx), order=3), sigma=1.2)
-    gy, gx = np.gradient(elev, 10.0, 10.0)
-    aspect_cos = np.cos(np.arctan2(-gx, gy))
-    prof_curv = ndimage.laplace(elev) / 100.0
+    ax = axs[0]                                            # (a) PICP
+    n = 60
+    median = rng.uniform(1.0, 4.0, n)
+    sd_benar = 0.18 + 0.12 * median
+    obs = median + rng.normal(0, 1, n) * sd_benar
+    sd_model = 0.78 * sd_benar                             # model terlalu yakin: interval terlalu sempit
+    bawah, atas = median - 1.645 * sd_model, median + 1.645 * sd_model
+    masuk = (obs >= bawah) & (obs <= atas)
+    picp = masuk.mean()
+    ax.vlines(median, bawah, atas, color=WARNA["abu"], lw=1.2, alpha=0.8, zorder=1)
+    ax.scatter(median[masuk], obs[masuk], s=26, c=KATEGORI[0], marker="o", edgecolors="white", linewidths=0.8, zorder=3,
+               label="di dalam interval 90%")
+    ax.scatter(median[~masuk], obs[~masuk], s=34, c=KATEGORI[1], marker="^", edgecolors="white", linewidths=0.8, zorder=3,
+               label="di luar interval 90%")
+    ax.plot([0.5, 5.6], [0.5, 5.6], color=WARNA["abu"], ls="--", lw=0.9, zorder=0)
+    ax.plot([], [], color=WARNA["abu"], lw=1.2, label="interval prediksi 90%")
+    ax.set_xlim(0.6, 4.6)
+    ax.set_ylim(0.2, 5.8)
+    ax.set_xlabel("Prediksi (median)", fontsize=8.8)
+    ax.set_ylabel("Pengamatan", fontsize=8.8)
+    ax.set_title(f"(a) PICP = {koma(picp, 2)} untuk interval 90%", fontsize=9.6, loc="left")
+    ax.legend(fontsize=7.6, loc="upper left", frameon=False)
+    ax.text(0.98, 0.03, "interval terlalu sempit:\nketidakpastian diremehkan", transform=ax.transAxes, ha="right",
+            va="bottom", fontsize=7.6, color=WARNA["teks"], bbox=dict(boxstyle="round,pad=0.25", fc="white",
+                                                                     ec=WARNA["abu_muda"]))
+    for f in (ax.xaxis, ax.yaxis):
+        f.set_major_locator(MultipleLocator(1))
+        f.set_major_formatter(KOMA(0))
+    ax.tick_params(labelsize=8)
 
-    # Normalisasi skor z pada piksel valid untuk membangun permukaan prediksi Stacking yang setia pada statistik Tabel 4.3
-    def norm_z(arr):
-        v = arr[mask]
-        return (arr - np.nanmean(v)) / max(np.nanstd(v), 1e-6)
-
-    z_asp = norm_z(aspect_cos)
-    z_curv = norm_z(prof_curv)
-    z_twi = norm_z(twi)
-    z_ci = norm_z(ind["CI"])
-    z_elev = norm_z(elev)
-    z_slp = norm_z(slp)
-    z_tpi = norm_z(tpi)
-    z_ndvi = norm_z(ind["NDVI"])
-
-    # Skor komposit mengikuti bobot variable importance Gambar 4.4-4.6 & statistik Tabel 4.3
-    skor_pasir = -0.32 * z_asp - 0.25 * z_curv + 0.28 * z_twi + 0.20 * z_ci - 0.18 * z_ndvi
-    skor_pasir = norm_z(skor_pasir)
-    pasir_l1 = np.clip(16.50 + 2.84 * skor_pasir, 7.05, 33.67)
-
-    skor_debu = 0.30 * z_twi - 0.28 * z_tpi - 0.22 * z_slp - 0.20 * z_elev
-    skor_debu = norm_z(skor_debu)
-    debu_l1 = np.clip(20.85 + 2.86 * skor_debu, 12.23, 40.39)
-
-    # Komposisi tertutup 100% (lempung dominan ~62,29%, SD ~4,89%)
-    lempung_l1 = np.clip(100.0 - pasir_l1 - debu_l1, 39.40, 80.92)
-    tot = pasir_l1 + debu_l1 + lempung_l1
-    pasir_l1 = pasir_l1 / tot * 100.0
-    debu_l1 = debu_l1 / tot * 100.0
-    lempung_l1 = lempung_l1 / tot * 100.0
-
-    # Ketidakpastian spasial (lebar interval prediksi 90% QRF / PIR90 untuk Lempung L1)
-    # Lebih tinggi di lereng curam, batas bentuklahan, dan tutupan tajuk sangat rapat/ekstrem
-    jarak_ekstrem = np.sqrt(0.35 * z_slp ** 2 + 0.35 * z_curv ** 2 + 0.30 * z_tpi ** 2)
-    pir90_lempung = np.clip(21.5 + 4.8 * (jarak_ekstrem - np.mean(jarak_ekstrem[mask])), 14.5, 34.0)
-
-    # Ekstrak dataset 50 titik sampel untuk bahan praktik DSM (sampel_dsm_bompon_50titik.csv)
-    titik_lap = gaya.baca_layer("titik_sampel_lapangan")
-    titik_ren = {a["kode"]: a for a, _ in gaya.baca_layer("titik_sampel_rencana")}
-    rng = np.random.default_rng(2026)
-    os.makedirs(os.path.dirname(KELUAR_CSV), exist_ok=True)
-    with open(KELUAR_CSV, "w", newline="", encoding="utf-8") as fh:
-        w_csv = csv.writer(fh)
-        w_csv.writerow([
-            "kode", "x_utm", "y_utm", "bentuklahan", "penggunaan_lahan", "kelas_lereng",
-            "elevasi_m", "slope_deg", "aspect_cos", "prof_curv", "twi", "tpi", "ndvi", "ndwi", "clay_index",
-            "pasir_l1_persen", "debu_l1_persen", "lempung_l1_persen",
-        ])
-        for atr, geom in titik_lap:
-            kd = atr["kode"]
-            px, py, _ = geom.GetPoint()
-            col_i = int(np.clip((px - gt[0]) / gt[1], 0, cols - 1))
-            row_i = int(np.clip((py - gt[3]) / gt[5], 0, rows - 1))
-            info_r = titik_ren.get(kd, {})
-            # Nilai observasi titik = nilai permukaan + residual lokal realistis sesuai RMSE observasi
-            p_obs = float(np.clip(pasir_l1[row_i, col_i] + rng.normal(0, 5.2), 6.49, 33.67))
-            d_obs = float(np.clip(debu_l1[row_i, col_i] + rng.normal(0, 5.0), 10.77, 41.80))
-            l_obs = float(np.clip(100.0 - p_obs - d_obs, 38.97, 82.73))
-            s_tot = p_obs + d_obs + l_obs
-            p_obs, d_obs, l_obs = p_obs / s_tot * 100.0, d_obs / s_tot * 100.0, l_obs / s_tot * 100.0
-            w_csv.writerow([
-                kd, round(px, 1), round(py, 1),
-                info_r.get("bentuklahan", "Lereng Tengah Perbukitan"),
-                info_r.get("penggunaan_lahan", "Agroforestri"),
-                info_r.get("kelas_lereng", "Agak Curam"),
-                round(float(elev[row_i, col_i]), 1),
-                round(float(slp[row_i, col_i]), 2),
-                round(float(aspect_cos[row_i, col_i]), 3),
-                round(float(prof_curv[row_i, col_i]), 4),
-                round(float(twi[row_i, col_i]), 2),
-                round(float(tpi[row_i, col_i]), 2),
-                round(float(ind["NDVI"][row_i, col_i]), 3),
-                round(float(ind["NDWI"][row_i, col_i]), 3),
-                round(float(ind["CI"][row_i, col_i]), 3),
-                round(p_obs, 2), round(d_obs, 2), round(l_obs, 2),
-            ])
-
-    # Gambar 4 panel peta
-    batas = gaya.baca_layer("batas_subdas")[0][1]
-    xs = [g.GetPoint()[0] for _, g in titik_lap]
-    ys = [g.GetPoint()[1] for _, g in titik_lap]
-
-    fig, axs = plt.subplots(1, 4, figsize=(10, 6.2))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.88, bottom=0.15, wspace=0.05)
-
-    panel_peta = [
-        (pasir_l1, "(a) Prediksi fraksi Pasir\nLapisan 1 (0–20 cm, %)", "YlOrBr", 10, 24, "Pasir (%)"),
-        (debu_l1, "(b) Prediksi fraksi Debu\nLapisan 1 (0–20 cm, %)", "GnBu", 14, 28, "Debu (%)"),
-        (lempung_l1, "(c) Prediksi fraksi Lempung\nLapisan 1 (0–20 cm, %)", "YlOrRd", 52, 72, "Lempung (%)"),
-        (pir90_lempung, "(d) Ketidakpastian prediksi\n(Lebar $\\mathrm{PIR}_{90}$ Lempung, %)", "PuRd", 16, 30, "$\\mathrm{PIR}_{90} = q_{0,95} - q_{0,05}$ (%)"),
-    ]
-
-    for idx, (arr, jdl, cmap, vmin, vmax, lbl_cb) in enumerate(panel_peta):
-        ax = axs[idx]
-        arr_m = np.ma.masked_where(~mask, arr)
-        im = ax.imshow(arr_m, extent=ext, cmap=cmap, vmin=vmin, vmax=vmax, interpolation="nearest")
-        if idx == 3:
-            ax.scatter(xs, ys, s=10, c="white", edgecolors=WARNA["navy"], linewidths=0.7, zorder=5)
-        ax.set_title(jdl, fontsize=8.8)
-        cb = fig.colorbar(im, ax=ax, orientation="horizontal", fraction=0.045, pad=0.03)
-        cb.set_label(lbl_cb, fontsize=7.5)
-        cb.ax.tick_params(labelsize=7.2)
-
-        gaya.gambar_poligon(ax, batas, fc="none", ec=WARNA["navy"], lw=1.2)
-        ax.set_xlim(ext[0] + 140, ext[1] - 140)
-        ax.set_ylim(ext[2] + 140, ext[3] - 140)
-        ax.set_xticks([]), ax.set_yticks([])
-        for s in ax.spines.values():
-            s.set_visible(False)
-
-    gaya.skala_batang(axs[0], ext[0] + 200, ext[2] + 220, 500, "500 m", tinggi=24)
-    gaya.panah_utara(axs[0], 0.88, 0.88, 0.05)
-    simpan(fig, MODUL, "M8-G06_peta-prediksi-dan-ketidakpastian-tekstur-bompon.png")
+    ax = axs[1]                                            # (b) AOA
+    z, lereng, xx, yy, rng2 = lanskap()
+    t = twi(z, lereng)
+    m = z.shape[0]
+    kov = np.column_stack([z.ravel(), lereng.ravel() * 100, t.ravel()])
+    rendah = np.argwhere((z < np.quantile(z, 0.55)) & (xx < 0.62))       # sampel hanya di bagian bawah barat
+    pilih = rendah[rng.choice(len(rendah), 45, replace=False)]
+    latih = kov[pilih[:, 0] * m + pilih[:, 1]]
+    lipat = rng.permutation(np.arange(len(latih)) % 5)
+    di, ambang = indeks_ketidakmiripan(latih, kov, lipat)
+    di = di.reshape(m, m)
+    im = ax.imshow(di, cmap=ramp("di", "#EAF1FB", WARNA["navy"]), interpolation="nearest", vmin=0,
+                   vmax=np.quantile(di, 0.98))
+    luar = np.ma.masked_where(di <= ambang, np.ones_like(di))
+    ax.contourf(np.arange(m), np.arange(m), luar, levels=[0.5, 1.5], colors="none", hatches=["////"], zorder=2)
+    ax.contour(di, levels=[ambang], colors=[WARNA["oranye"]], linewidths=1.6, zorder=3)
+    ax.scatter(pilih[:, 1], pilih[:, 0], s=20, c=WARNA["oranye"], edgecolors="white", linewidths=0.7, zorder=4)
+    ax.set_xticks([]), ax.set_yticks([])
+    ax.set_title("(b) Indeks ketidakmiripan dan AOA", fontsize=9.6, loc="left")
+    cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.03)
+    cb.set_label("indeks ketidakmiripan (DI)", fontsize=8)
+    cb.ax.tick_params(labelsize=7.4)
+    cb.ax.yaxis.set_major_formatter(KOMA(1))
+    tangan = [Line2D([], [], marker="o", ls="", markerfacecolor=WARNA["oranye"], markeredgecolor="white", markersize=6,
+                     label="titik data latih"),
+              Line2D([], [], color=WARNA["oranye"], lw=1.6, label=f"batas AOA (DI = {koma(ambang, 2)})"),
+              Patch(fc="white", ec=WARNA["abu"], hatch="////", label="di luar AOA")]
+    ax.legend(handles=tangan, fontsize=7.6, loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=3, frameon=False,
+              handletextpad=0.4, columnspacing=1.0)
+    fig.text(0.07, 0.015, "Data sintetis; DI dihitung dari elevasi, kemiringan lereng, dan TWI yang dibakukan dengan bobot "
+             "sama.", fontsize=7.4, style="italic", color=WARNA["abu"])
+    simpan(fig, MODUL, "M8-G05_interval-prediksi-dan-aoa.png")
 
 
 if __name__ == "__main__":
     gaya.atur()
-    os.makedirs(os.path.dirname(KELUAR_JSON), exist_ok=True)
-    with open(KELUAR_JSON, "w", encoding="utf-8") as fh:
-        json.dump(DATA_EMPIRIS, fh, indent=2, ensure_ascii=False)
-    g01_kerangka_tumpukan_scorpan()
-    g02_komparasi_algoritma()
-    g03_validasi_dan_smogn()
-    g04_perbandingan_akurasi_bompon()
-    g05_variable_importance_rfe()
-    g06_peta_prediksi_dan_ketidakpastian()
+    g01_kovariat()
+    g02_pembagian_data()
+    g03_alur()
+    g04_residual()
+    g05_ketidakpastian()
