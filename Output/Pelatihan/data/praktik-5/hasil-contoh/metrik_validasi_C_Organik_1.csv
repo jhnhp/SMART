@@ -1,0 +1,9 @@
+Model,Validasi,ME,MAE,RMSE,MEC,R2
+Menebak rata-rata,Acak,-0.0,0.32,0.41,-0.02,
+Menebak rata-rata,Spasial,0.01,0.32,0.41,-0.03,
+Rata-rata per bentuklahan,Acak,0.0,0.34,0.43,-0.12,0.0
+Rata-rata per bentuklahan,Spasial,0.01,0.35,0.46,-0.28,0.0
+Regresi linear,Acak,0.01,0.38,0.49,-0.46,0.06
+Regresi linear,Spasial,-0.1,0.4,0.56,-0.93,0.06
+Random forest,Acak,0.0,0.32,0.41,-0.02,0.01
+Random forest,Spasial,0.01,0.33,0.43,-0.13,0.0

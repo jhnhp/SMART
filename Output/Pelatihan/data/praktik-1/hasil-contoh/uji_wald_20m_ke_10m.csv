@@ -1,0 +1,4 @@
+Penajaman,r bilinear,r HPF,RMSE bilinear,RMSE HPF
+B11 dengan B08,0.9463,0.9484,0.0088,0.0082
+B12 dengan B08,0.9446,0.9273,0.0073,0.008
+B12 dengan B04,0.9446,0.9345,0.0073,0.0073

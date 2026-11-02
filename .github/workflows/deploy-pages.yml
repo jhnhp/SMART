@@ -5,7 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "website/**"
-      - "Output/Modul *.md"
+      - "Output/Materi/Modul *.md"
       - "Output/assets/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:

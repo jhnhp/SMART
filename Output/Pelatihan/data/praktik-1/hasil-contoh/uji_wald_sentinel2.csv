@@ -1,0 +1,6 @@
+,ERGAS,SAM (derajat),r B02,r B03,r B04,r B08
+Tanpa penajaman (bilinear),5.783,2.095,0.788,0.78,0.81,0.75
+Brovey + foto udara,10.678,2.095,0.358,0.284,0.58,0.161
+HPF + foto udara,5.598,2.165,0.803,0.784,0.815,0.724
+Brovey + bayangan medan LiDAR,13.303,3.844,-0.064,-0.182,0.221,0.188
+HPF + bayangan medan LiDAR,5.795,2.093,0.785,0.776,0.809,0.75

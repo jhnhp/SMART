@@ -1,0 +1,113 @@
+{
+ "piksel_per_aturan_dalam_subdas": {
+  "aturan_a_ndvi025": {
+   "H_0": 29358,
+   "H_1": 111
+  },
+  "aturan_b_ndvi035_bsi0": {
+   "H_0": 29229,
+   "H_1": 240
+  },
+  "aturan_c_ndvi025_nbr2": {
+   "H_0": 29438,
+   "H_1": 31
+  },
+  "aturan_b_20250721": {
+   "H_0": 29386,
+   "H_1": 83
+  }
+ },
+ "aturan_b_per_penggunaan_lahan": {
+  "Agroforestri": {
+   "terbuka": 1,
+   "semua": 20846,
+   "persen": 0.0
+  },
+  "Tegalan": {
+   "terbuka": 12,
+   "semua": 1707,
+   "persen": 0.7
+  },
+  "Sawah": {
+   "terbuka": 62,
+   "semua": 3394,
+   "persen": 1.83
+  },
+  "Permukiman": {
+   "terbuka": 165,
+   "semua": 3522,
+   "persen": 4.68
+  }
+ },
+ "aturan_b_2025_per_penggunaan_lahan": {
+  "Agroforestri": 0,
+  "Tegalan": 1,
+  "Sawah": 2,
+  "Permukiman": 80
+ },
+ "aturan_b_tanpa_permukiman_piksel": 75,
+ "statistik_ekstraksi": {
+  "bi_20240813": {
+   "min": 0.015,
+   "rerata": 0.036,
+   "maks": 0.397,
+   "simpangan": 0.013,
+   "jumlah_valid": 69504
+  },
+  "cmr_20240813": {
+   "min": 1.069,
+   "rerata": 2.096,
+   "maks": 2.593,
+   "simpangan": 0.271,
+   "jumlah_valid": 69504
+  },
+  "bi_tanah_terbuka": {
+   "min": 0.042,
+   "rerata": 0.069,
+   "maks": 0.092,
+   "simpangan": 0.008,
+   "jumlah_valid": 75
+  },
+  "cmr_tanah_terbuka": {
+   "min": 1.46,
+   "rerata": 1.744,
+   "maks": 2.066,
+   "simpangan": 0.136,
+   "jumlah_valid": 75
+  }
+ },
+ "spektrum_rerata": {
+  "kanal": [
+   "B02",
+   "B03",
+   "B04",
+   "B08",
+   "B11",
+   "B12"
+  ],
+  "tanah_terbuka": [
+   0.0455,
+   0.0707,
+   0.0854,
+   0.1568,
+   0.1452,
+   0.0849
+  ],
+  "vegetasi": [
+   0.022,
+   0.0401,
+   0.0247,
+   0.2935,
+   0.1541,
+   0.0694
+  ],
+  "n_terbuka": 75,
+  "n_vegetasi": 45405
+ },
+ "frekuensi": {
+  "H_0": 29192,
+  "H_1": 231,
+  "H_2": 46
+ },
+ "status": "selesai"
+}

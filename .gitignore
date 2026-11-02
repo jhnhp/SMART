@@ -17,3 +17,10 @@ Thumbs.db
 .vscode/
 *.swp
 *~
+
+# Data sumber berukuran besar. Salinan yang dipakai peserta ada di Output/Pelatihan/data/.
+Source/Lidar/
+Source/lidar_fill/
+Source/lidar_fill.aux.xml
+Source/DEMNAS/
+Source/Proximal Sensing/*.xlsx

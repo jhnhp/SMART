@@ -39,7 +39,7 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
 
 for (let n = 1; n <= 8; n++) {
-  const mdPath = path.join(sourceDir, `Modul ${n}.md`);
+  const mdPath = path.join(sourceDir, 'Materi', `Modul ${n}.md`);
   const markdown = fs.readFileSync(mdPath, 'utf8');
   const content = marked.parse(markdown);
   const previous = n > 1 ? `<a href="modul-${n-1}.html">← Modul sebelumnya</a>` : '<a href="index.html">← Beranda</a>';

@@ -1,0 +1,10 @@
+numpy
+pandas
+requests
+scipy
+scikit-learn
+matplotlib
+rasterio
+quantile-forest
+notebook
+jupyterlab

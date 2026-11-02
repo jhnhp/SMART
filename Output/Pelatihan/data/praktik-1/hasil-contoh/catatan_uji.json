@@ -1,0 +1,133 @@
+{
+ "info_raster": {
+  "sentinel2_l2a_20250721_10m": {
+   "kolom": 192,
+   "baris": 362,
+   "kanal": 10,
+   "piksel": 10.0,
+   "crs": "EPSG:32749"
+  },
+  "sentinel1_rtc_20240830_10m": {
+   "kolom": 192,
+   "baris": 362,
+   "kanal": 2,
+   "piksel": 10.0,
+   "crs": "EPSG:32749"
+  },
+  "DEMNAS_1408-23_v1.0": {
+   "kolom": 3333,
+   "baris": 3333,
+   "kanal": 1,
+   "piksel": 7.5e-05,
+   "crs": "EPSG:4326"
+  },
+  "LiDAR_Kalijambe_Bompon_20222023": {
+   "kolom": 1761,
+   "baris": 5005,
+   "kanal": 1,
+   "piksel": 1.0,
+   "crs": ""
+  },
+  "foto_udara_rgb_1m": {
+   "kolom": 1520,
+   "baris": 3220,
+   "kanal": 3,
+   "piksel": 1.0,
+   "crs": "EPSG:32749"
+  }
+ },
+ "statistik": {
+  "demnas_10m": {
+   "MIN": 349.44638,
+   "MAX": 536.1842,
+   "MEAN": 458.6171,
+   "STD_DEV": 25.29724
+  },
+  "lidar_10m": {
+   "MIN": 367.13861,
+   "MAX": 500.55106,
+   "MEAN": 442.49589,
+   "STD_DEV": 18.43921
+  },
+  "vv": {
+   "MIN": -23.31511,
+   "MAX": 7.08018,
+   "MEAN": -7.04085,
+   "STD_DEV": 2.80717
+  },
+  "vh": {
+   "MIN": -26.30007,
+   "MAX": -1.65553,
+   "MEAN": -13.4852,
+   "STD_DEV": 2.52675
+  }
+ },
+ "stack": {
+  "kanal_vrt": 14,
+  "kolom_vrt": 192,
+  "baris_vrt": 362,
+  "kanal": 14,
+  "kolom": 152,
+  "baris": 322
+ },
+ "nilai_piksel_uji": {
+  "x": 396990.0,
+  "y": 9165005.0,
+  "kanal": {
+   "1": 0.0309,
+   "2": 0.0509,
+   "3": 0.0321,
+   "4": 0.073,
+   "5": 0.233,
+   "6": 0.3102,
+   "7": 0.3568,
+   "8": 0.3284,
+   "9": 0.1711,
+   "10": 0.0853,
+   "11": -3.9499,
+   "12": -9.0686,
+   "13": 439.2295,
+   "14": 427.1888
+  }
+ },
+ "selisih_dem": {
+  "MIN": -9.90298,
+  "MAX": 57.22345,
+  "MEAN": 15.85085,
+  "STD_DEV": 14.07678
+ },
+ "statistik_pan": {
+  "pan_10m": {
+   "MIN": 44.0,
+   "MAX": 237.44,
+   "MEAN": 114.64499,
+   "STD_DEV": 24.29142
+  },
+  "intensitas": {
+   "MIN": 0.01263,
+   "MAX": 0.20073,
+   "MEAN": 0.033,
+   "STD_DEV": 0.01209
+  }
+ },
+ "rumus_setara": "(\"pan_fu_2m5@1\" - 114.64499) * 0.01209 / 24.29142 + 0.033",
+ "pansharp_fu": {
+  "kolom": 608,
+  "baris": 1288,
+  "kanal": 3,
+  "piksel": 2.5,
+  "kanal1": {
+   "MIN": -0.00697,
+   "MAX": 0.11795,
+   "MEAN": 0.02807,
+   "STD_DEV": 0.01539
+  }
+ },
+ "statistik_hillshade": {
+  "MIN": 1.0,
+  "MAX": 254.81627,
+  "MEAN": 169.98028,
+  "STD_DEV": 38.5938
+ },
+ "status": "selesai"
+}

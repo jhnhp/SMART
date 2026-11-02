@@ -1,0 +1,110 @@
+{
+ "lereng_statistik": {
+  "min": 0.0,
+  "mean": 22.1,
+  "max": 87.9
+ },
+ "indeks_statistik": {
+  "indeks_bi": {
+   "min": 0.012,
+   "mean": 0.034,
+   "max": 0.201
+  },
+  "indeks_ci": {
+   "min": -0.547,
+   "mean": -0.25,
+   "max": 0.319
+  },
+  "indeks_cmr": {
+   "min": 1.111,
+   "mean": 2.13,
+   "max": 2.66
+  },
+  "indeks_ndvi": {
+   "min": 0.038,
+   "mean": 0.829,
+   "max": 0.936
+  }
+ },
+ "digitasi_progres": {
+  "poligon_ke": 10,
+  "fitur": 10
+ },
+ "digitasi": {
+  "fitur": 10,
+  "valid": true
+ },
+ "luas_bentuklahan_peserta_ha": {
+  "Kaki lereng dan dataran koluvial": 26.52,
+  "Punggung dan interfluve": 43.57,
+  "Lereng perbukitan": 224.62
+ },
+ "poligon_kelas_lereng": 2707,
+ "smu_mentah": {
+  "poligon": 1422,
+  "lebih_kecil_MLA": 1297,
+  "persen": 91.2,
+  "jenis_smu": 15
+ },
+ "terpilih_kecil": 1297,
+ "generalisasi_riwayat": [
+  {
+   "putaran": 1,
+   "poligon": 1422,
+   "terpilih": 1297
+  },
+  {
+   "putaran": 2,
+   "poligon": 125,
+   "terpilih": 0
+  }
+ ],
+ "poligon_sebelum_dissolve": 125,
+ "smu_akhir": {
+  "poligon": 105,
+  "terkecil": 0.41,
+  "jenis": 13
+ },
+ "legenda_smu_csv": "smu,bentuklahan,kelas,count,unique,min,max,range,sum,mean,median,stddev,minority,majority,q1,q3,iqr\nK3,Kaki lereng dan dataran koluvial,3,2,2,0.6,0.91,0.31,1.51,0.755,0.755,0.155,0.6,0.6,0.6,0.91,0.31\nL5,Lereng perbukitan,5,3,3,0.47,0.88,0.41,2.12,0.706666666666667,0.77,0.17326921891156,0.47,0.47,0.62,0.825,0.205\nK2,Kaki lereng dan dataran koluvial,2,2,2,0.61,0.85,0.24,1.46,0.73,0.73,0.12,0.61,0.61,0.61,0.85,0.24\nP4,Punggung dan interfluve,4,5,5,1.26,8.95,7.69,14.73,2.946,1.49,3.00720867250678,1.26,1.26,1.28,1.75,0.47\nP1,Punggung dan interfluve,1,1,1,0.63,0.63,0,0.63,0.63,0.63,0,0.63,0.63,0.63,0.63,0\nL4,Lereng perbukitan,4,20,20,0.42,23.87,23.45,86.51,4.3255,2.33,5.47412593479544,0.42,0.42,1.19,5.125,3.935\nK4,Kaki lereng dan dataran koluvial,4,6,6,0.63,2.14,1.51,7.47,1.245,1.015,0.580308825827536,0.63,0.63,0.74,1.93,1.19\nP3,Punggung dan interfluve,3,7,7,0.71,9.56,8.85,25.11,3.58714285714286,1.36,3.62006990574063,0.71,0.71,0.875,5.865,4.99\nL2,Lereng perbukitan,2,24,20,0.46,9.03,8.57,34.72,1.44666666666667,0.84,1.74826739627807,0.46,0.47,0.575,1.765,1.19\nL3,Lereng perbukitan,3,20,19,0.41,17.28,16.87,98.13,4.9065,2.305,5.32571711133815,0.41,0.84,0.76,8.21,7.45\nK1,Kaki lereng dan dataran koluvial,1,4,4,0.97,6.4,5.43,11.86,2.965,2.245,2.13174224520696,0.97,0.97,1.195,4.735,3.54\nP2,Punggung dan interfluve,2,2,2,0.45,0.68,0.23,1.13,0.565,0.565,0.115,0.45,0.45,0.45,0.68,0.23\nL1,Lereng perbukitan,1,9,9,0.47,2.36,1.89,9.33,1.03666666666667,0.94,0.638139657302555,0.47,0.47,0.52,1.1,0.58\n",
+ "silang_bentuklahan_ha": {
+  "Kaki lereng dan dataran koluvial | Lereng Atas Perbukitan": 0.13,
+  "Kaki lereng dan dataran koluvial | Lereng Bawah Perbukitan": 2.81,
+  "Kaki lereng dan dataran koluvial | Interfluve": 0.21,
+  "Kaki lereng dan dataran koluvial | Lereng Tengah Perbukitan": 3.68,
+  "Kaki lereng dan dataran koluvial | Lereng Kaki Koluvial": 9.17,
+  "Kaki lereng dan dataran koluvial | Dataran Koluvial": 10.5,
+  "Punggung dan interfluve | Interfluve": 12.8,
+  "Punggung dan interfluve | Lereng Tengah Perbukitan": 16.43,
+  "Punggung dan interfluve | Lereng Bawah Perbukitan": 3.68,
+  "Punggung dan interfluve | Lereng Atas Perbukitan": 10.66,
+  "Lereng perbukitan | Lereng Kaki Koluvial": 10.57,
+  "Lereng perbukitan | Lereng Bawah Perbukitan": 49.64,
+  "Lereng perbukitan | Dataran Koluvial": 9.94,
+  "Lereng perbukitan | Interfluve": 26.59,
+  "Lereng perbukitan | Lereng Atas Perbukitan": 38.9,
+  "Lereng perbukitan | Lereng Tengah Perbukitan": 88.97
+ },
+ "luas_bentuklahan_riset_ha": {
+  "Interfluve": 39.61,
+  "Lereng Atas Perbukitan": 49.68,
+  "Lereng Tengah Perbukitan": 109.08,
+  "Lereng Bawah Perbukitan": 56.13,
+  "Lereng Kaki Koluvial": 19.76,
+  "Dataran Koluvial": 20.44
+ },
+ "luas_kelas_lereng_riset_ha": {
+  "Datar (0-8%)": 102.99,
+  "Landai (8-15%)": 63.14,
+  "Agak Curam (15-25%)": 74.52,
+  "Curam (25-45%)": 50.68,
+  "Sangat Curam (>45%)": 3.34
+ },
+ "luas_kelas_lereng_dem30_ha": {
+  "K_1": 31.14,
+  "K_2": 56.93,
+  "K_3": 109.66,
+  "K_4": 91.69,
+  "K_5": 5.27
+ },
+ "status": "selesai"
+}

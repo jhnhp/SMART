@@ -1,0 +1,10 @@
+# Dependensi Pustaka Python untuk Pelatihan SMART UGM & PT SMART Tbk
+# Praktik 3 (Kemometrika PSS) & Praktik 5 (Machine Learning Digital Soil Mapping)
+
+numpy>=1.23.0
+scipy>=1.9.0
+matplotlib>=3.6.0
+scikit-learn>=1.2.0
+quantile-forest>=1.2.0
+ipykernel>=6.20.0
+jupyterlab>=4.0.0

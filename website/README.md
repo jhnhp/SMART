@@ -5,7 +5,7 @@ Website pembaca untuk delapan modul pelatihan Remote Sensing dan Digital Soil Ma
 ## Prinsip sumber
 
 - Isi modul **tidak ditulis ulang** di aplikasi web.
-- Workflow deploy menyalin file `Output/Modul 1.md` sampai `Output/Modul 8.md` ke folder `modules/` tanpa mengubah isi file.
+- Workflow deploy menyalin file `Output/Materi/Modul 1.md` sampai `Output/Materi/Modul 8.md` ke folder `modules/` tanpa mengubah isi file.
 - `app.js` hanya merender Markdown asli menjadi HTML. Penyesuaian path gambar dilakukan saat rendering, bukan pada berkas sumber.
 - Setiap perubahan pada file Markdown atau aset di `Output/` memicu deployment ulang.
 

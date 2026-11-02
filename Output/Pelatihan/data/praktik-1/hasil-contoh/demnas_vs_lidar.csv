@@ -1,0 +1,8 @@
+,nilai
+Rata-rata selisih DEMNAS - LiDAR (m),15.85
+Simpangan baku selisih (m),14.08
+RMSE setelah bias dibuang (m),14.08
+Korelasi ketinggian,0.73
+Lereng rata-rata LiDAR 10 m (%),23.65
+Lereng rata-rata DEMNAS 10 m (%),20.44
+Korelasi lereng,0.52

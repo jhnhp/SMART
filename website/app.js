@@ -81,7 +81,7 @@ function buildChapters() {
 }
 async function fetchMarkdown(n) {
   if (cache.has(n)) return cache.get(n);
-  const response = await fetch('../Output/' + encodeURIComponent(modules[n-1].file), {cache:'no-cache'});
+  const response = await fetch('../Output/Materi/' + encodeURIComponent(modules[n-1].file), {cache:'no-cache'});
   if (!response.ok) throw new Error('File sumber tidak ditemukan (HTTP ' + response.status + ').');
   const md = await response.text(); cache.set(n, md); return md;
 }
@@ -100,7 +100,7 @@ async function loadModule(n, scroll = false) {
     prose.querySelectorAll('a').forEach(a => {
       const href = a.getAttribute('href') || '';
       if (/^https?:\/\//i.test(href)) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
-      else if (href.endsWith('.md')) a.href = 'https://github.com/jhnhp/SMART/blob/main/Output/' + encodeURIComponent(href.split('/').pop());
+      else if (href.endsWith('.md')) a.href = 'https://github.com/jhnhp/SMART/blob/main/Output/Materi/' + encodeURIComponent(href.split('/').pop());
     });
     prose.querySelectorAll('img').forEach(img => {
       img.loading = 'lazy';
