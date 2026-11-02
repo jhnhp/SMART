@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Spesifikasi Sistem - Pelatihan SMART UGM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 1600px;
+    height: 960px;
+    background: #F8FAFC;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1E293B;
+    padding: 48px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 2px solid #E2E8F0;
+    padding-bottom: 20px;
+  }
+
+  .header-left h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.5px;
+  }
+
+  .header-left p {
+    font-size: 13.5px;
+    color: #64748B;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .header-right {
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1B365D;
+  }
+
+  .header-right span {
+    color: #64748B;
+    font-weight: 400;
+  }
+
+  /* TABLE CARD */
+  .table-container {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+    margin-top: 22px;
+    margin-bottom: 18px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  thead th {
+    background: #1B365D;
+    color: #FFFFFF;
+    padding: 15px 22px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  thead th:nth-child(2) {
+    background: #2563EB;
+    width: 320px;
+  }
+
+  thead th:nth-child(3) {
+    background: #059669;
+    width: 380px;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #E2E8F0;
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #F8FAFC;
+  }
+
+  tbody td {
+    padding: 13px 22px;
+    font-size: 13.5px;
+    vertical-align: middle;
+    line-height: 1.45;
+  }
+
+  .col-component {
+    font-weight: 700;
+    color: #0F172A;
+    width: 230px;
+  }
+
+  .col-min {
+    font-weight: 600;
+    color: #334155;
+  }
+
+  .col-rec {
+    font-weight: 600;
+    color: #065F46;
+  }
+
+  .col-note {
+    color: #64748B;
+    font-size: 12.5px;
+  }
+
+  .badge-min {
+    display: inline-block;
+    background: #FEF3C7;
+    color: #92400E;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-left: 6px;
+  }
+
+  .badge-rec {
+    display: inline-block;
+    background: #DCFCE7;
+    color: #166534;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-left: 6px;
+  }
+
+  /* BOTTOM NOTES */
+  .notes-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .note-box {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.45;
+  }
+
+  .note-box strong {
+    color: #0F172A;
+    font-size: 12.5px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* FOOTER */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: #94A3B8;
+    border-top: 1px solid #E2E8F0;
+    padding-top: 14px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <h1>Spesifikasi Sistem &amp; Kebutuhan Laptop Peserta</h1>
+      <p>Pelatihan Remote Sensing, Proximal Soil Sensing, dan Digital Soil Mapping &bull; Sub-DAS Bompon</p>
+    </div>
+    <div class="header-right">
+      Pusat Studi Pengelolaan Sumber Daya Lahan (PS2DL) UGM<br>
+      <span>Kemitraan PT SMART Tbk (2026)</span>
+    </div>
+  </header>
+
+  <!-- TABLE -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Komponen</th>
+          <th>Minimum Requirements</th>
+          <th>Recommended Requirements</th>
+          <th>Keterangan / Catatan Singkat</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-component">Prosesor (CPU)</td>
+          <td class="col-min">Dual-Core 64-bit @ 2.0 GHz+</td>
+          <td class="col-rec">Quad-Core / Hexa-Core 64-bit <span class="badge-rec">Optimal</span></td>
+          <td class="col-note">Intel Core i5/i7 (Gen 10+), Ryzen 5/7, atau Apple M1-M3 untuk training model cepat.</td>
+        </tr>
+        <tr>
+          <td class="col-component">Memori (RAM)</td>
+          <td class="col-min">4 GB RAM <span class="badge-min">Cukup</span></td>
+          <td class="col-rec">8 GB s.d. 16 GB RAM <span class="badge-rec">Disarankan</span></td>
+          <td class="col-note">RAM 8 GB+ memungkinkan membuka JupyterLab, QGIS 3, dan browser sekaligus.</td>
+        </tr>
+        <tr>
+          <td class="col-component">Penyimpanan (Disk)</td>
+          <td class="col-min">5 GB ruang kosong</td>
+          <td class="col-rec">10 GB+ ruang kosong (SSD)</td>
+          <td class="col-note">SSD sangat disarankan agar pembacaan raster DEM &amp; citra satelit responsif.</td>
+        </tr>
+        <tr>
+          <td class="col-component">Sistem Operasi</td>
+          <td class="col-min">Windows 10/11, Linux, macOS</td>
+          <td class="col-rec">Windows 10/11, Linux, macOS</td>
+          <td class="col-note">Wajib arsitektur 64-bit untuk pustaka geospasial (rasterio, GDAL).</td>
+        </tr>
+        <tr>
+          <td class="col-component">Versi Python</td>
+          <td class="col-min">Python 3.9+ (64-bit)</td>
+          <td class="col-rec">Python 3.10 atau 3.11 (64-bit) <span class="badge-rec">Paling Stabil</span></td>
+          <td class="col-note">Pustaka biner (wheels) rasterio &amp; quantile-forest tersedia langsung tanpa compiler C++.</td>
+        </tr>
+        <tr>
+          <td class="col-component">Software GIS</td>
+          <td class="col-min">QGIS 3.28 LTR</td>
+          <td class="col-rec">QGIS 3.28 s.d. 3.34+ LTR</td>
+          <td class="col-note">Untuk membuka dan menginspeksi berkas proyek spasial (.qgz) di setiap praktik.</td>
+        </tr>
+        <tr>
+          <td class="col-component">Koneksi Internet</td>
+          <td class="col-min">Minimal 5 Mbps</td>
+          <td class="col-rec">15 &ndash; 25 Mbps stabil</td>
+          <td class="col-note">Diperlukan saat instalasi paket pip di awal dan eksekusi query STAC API satelit.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 3 SIMPLE NOTES -->
+  <div class="notes-row">
+    <div class="note-box">
+      <strong>Virtual Environment (venv)</strong>
+      Gunakan skrip <code>setup_env.sh</code> (Linux/Mac) atau <code>setup_env.bat</code> (Windows) di folder pelatihan untuk setup otomatis satu-klik.
+    </div>
+    <div class="note-box">
+      <strong>Catatan Laptop RAM 4 GB</strong>
+      Tutup QGIS Desktop saat menjalankan pelatihan model Random Forest 500 pohon di Praktik 5 agar penggunaan memori tetap aman.
+    </div>
+    <div class="note-box">
+      <strong>Alternatif Google Colab (Cloud)</strong>
+      Peserta dengan laptop spek terbatas dapat menjalankan notebook langsung di Google Colab (gratis 12 GB RAM cloud tanpa instalasi lokal).
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div>Dokumen Modul Praktikum Precision Agriculture &bull; PS2DL Fakultas Pertanian UGM &bull; PT SMART Tbk</div>
+    <div>Format Berkas: PNG Resolusi Tinggi (1600 &times; 960 px)</div>
+  </footer>
+
+</body>
+</html>

@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import periksa_modul  # noqa: E402  (pemilah sitasi yang sama dengan pemeriksa modul)
 
 AKAR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTPUT = os.path.join(AKAR, "Output")
+OUTPUT = os.path.join(AKAR, "Output", "Materi")
 DAFTAR_PUSTAKA = os.path.join(OUTPUT, "Daftar Pustaka.md")
 JUDUL = "Pemanfaatan Remote Sensing dan Digital Soil Mapping untuk Pertanian Presisi pada Perkebunan Kelapa Sawit"
 NAVY = RGBColor(0x1F, 0x3A, 0x5F)

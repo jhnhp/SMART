@@ -23,7 +23,7 @@ import sys
 import unicodedata
 
 AKAR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-OUTPUT = os.path.join(AKAR, "Output")
+OUTPUT = os.path.join(AKAR, "Output", "Materi")
 KERANGKA = os.path.join(AKAR, "Source", "Modul 1 & 2.md")
 DAFTAR_PUSTAKA = os.path.join(OUTPUT, "Daftar Pustaka.md")
 TERLARANG = ["Bompon", "Bompong", "PT SMART", "SMART Tbk", "cahya", "Menggunaka", "iformasi", "Misanya",

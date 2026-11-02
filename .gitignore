@@ -17,6 +17,7 @@ Thumbs.db
 .vscode/
 *.swp
 *~
+.ipynb_checkpoints/
 
 # Data sumber berukuran besar. Salinan yang dipakai peserta ada di Output/Pelatihan/data/.
 Source/Lidar/
