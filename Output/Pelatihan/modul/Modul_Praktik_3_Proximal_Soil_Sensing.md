@@ -238,7 +238,7 @@ Sebagai pengayaan, bagian 12 merata-ratakan spektrum ke enam kanal lebar seperti
 
 ## Jembatan ke Praktik 5
 
-Demonstrasi tadi menghasilkan spektrum. Notebook menunjukkan bagaimana spektrum menjadi sifat tanah. Pada Praktik 5, logika yang sama dipakai dengan sasaran yang sama, yaitu C-organik, tetapi dengan bahan yang berbeda: masukannya bukan spektrum melainkan kovariat lingkungan, dan keluarannya bukan nilai satu sampel melainkan peta. Data sensor proksimal yang rapat dapat masuk ke alur itu, baik sebagai data sasaran tambahan maupun sebagai kovariat lokal, sebagaimana dibahas dalam Modul 7 dan Tabel 8.1.
+Demonstrasi tadi menghasilkan spektrum. Notebook menunjukkan bagaimana spektrum menjadi sifat tanah. Pada Praktik 5, logika yang sama, yaitu menghubungkan pengamatan dengan data pendukung melalui model lalu menilainya secara jujur, dipakai untuk sasaran yang berbeda, yaitu kelas tutupan material. Masukannya bukan spektrum melainkan kovariat lingkungan, dan keluarannya bukan nilai satu sampel melainkan peta kelas. Data sensor proksimal yang rapat dapat masuk ke alur itu, baik sebagai data sasaran tambahan maupun sebagai kovariat lokal, sebagaimana dibahas dalam Modul 7 dan Tabel 8.1.
 
 ## Jika Tertinggal
 

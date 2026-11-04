@@ -369,11 +369,31 @@ P3 = [
 # ---------------------------------------------------------------------------------------------
 # PRAKTIK 5
 # ---------------------------------------------------------------------------------------------
+# Pengaturan CatBoost dipakai di seluruh notebook Praktik 5. allow_writing_files=False mencegah folder
+# log catboost_info/ di folder peserta. one_hot_max_size=10 membuat kategori
+# dengan paling banyak 10 nilai dikodekan one-hot di dalam CatBoost; kategori yang lebih beragam
+# tetap memakai ordered target statistics. Dengan nilai bawaan (2) pelatihan sekitar tujuh sampai
+# delapan kali lebih lama tanpa kenaikan akurasi pada data ini (sel pembanding di C2; dicatat di modul).
+CATBOOST_P5 = "dict(iterations=300, depth=4, learning_rate=0.08, one_hot_max_size=10, random_seed=0, verbose=0, allow_writing_files=False)"
+
+INSTAL_P5 = """
+# ==============================================================================
+# INSTALASI DEPENDENSI (Jalankan sel ini HANYA jika pustaka belum terpasang)
+# Hilangkan tanda pagar (#) pada baris di bawah untuk memasang dependensi:
+# ==============================================================================
+# !pip install numpy pandas matplotlib scipy scikit-learn rasterio catboost imbalanced-learn
+# Atau instal seluruh dependensi modul melalui file requirements.txt:
+# !pip install -r ../../requirements.txt
+"""
+
 P5 = [
+    kode(INSTAL_P5),
     md("""
     # Praktik 5. Machine Learning untuk Digital Soil Mapping
 
-    Notebook ini melanjutkan kovariat yang disiapkan di QGIS, lalu mengikuti persamaan SCORPAN pada Modul 8: mempelajari fungsi yang menghubungkan sifat tanah di titik sampel dengan kondisi lingkungannya, menilai fungsi tersebut secara jujur, lalu menerapkannya ke seluruh piksel Sub-DAS Bompon.
+    Notebook ini memetakan **tutupan material**, yaitu bahan induk tanah, di Sub-DAS Bompon dengan pembelajaran mesin. Sasarannya kategorik: tujuh kelas material pada peta Malik (2017), yang juga dipakai Fatmawati (2026) sebagai kovariat bahan induk. Alurnya mengikuti persamaan SCORPAN pada Modul 8: mempelajari hubungan antara kelas di titik sampel dan kondisi lingkungannya, menilai hubungan itu secara jujur, lalu menerapkannya ke seluruh piksel.
+
+    Model utama adalah **CatBoost** (Prokhorenkova et al., 2018), algoritme *gradient boosting* yang dapat membaca kovariat kategorik secara langsung. *Random forest* dipakai sebagai pembanding.
 
     Notebook dibagi menjadi tiga bagian:
 
@@ -381,150 +401,155 @@ P5 = [
     - **Bagian B**, penyiapan dan pemilihan kovariat berdasarkan SCORPAN;
     - **Bagian C**, pembangunan model DSM.
 
-    Satu hal perlu dipegang sejak awal: hanya ada 50 titik, sedangkan DEM yang dipakai berasal dari data global 30 m. Jangan menganggap model pasti berhasil hanya karena petanya terlihat meyakinkan. Biarkan angka validasi yang berbicara.
+    Satu hal perlu dipegang sejak awal: kelas di 210 titik diambil dari **peta**, bukan dari pengamatan lapangan. Ukuran ketelitian di notebook ini menyatakan seberapa baik model mereproduksi peta Malik (2017) dari kovariat, bukan seberapa benar peta itu di lapangan.
     """),
     md("## Menyiapkan lingkungan kerja"),
-    kode(SIAPKAN.format(paket='numpy pandas scipy scikit-learn matplotlib rasterio quantile-forest', n=5)),
+    kode(SIAPKAN.format(paket='numpy pandas scipy scikit-learn matplotlib rasterio catboost imbalanced-learn', n=5)),
     kode("""
     import glob
+    import shutil
+    import textwrap
+    import time
     import warnings
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
+    from matplotlib.colors import ListedColormap
+    from matplotlib.patches import Patch
     import rasterio
+    from catboost import CatBoostClassifier
+    from imblearn.over_sampling import SMOTE, SMOTENC
     from sklearn.cluster import KMeans
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.inspection import permutation_importance
-    from sklearn.linear_model import LinearRegression
-    from sklearn.model_selection import GroupKFold, KFold, cross_val_predict, train_test_split
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score, cohen_kappa_score, confusion_matrix, f1_score, precision_score, recall_score
+    from sklearn.model_selection import GroupKFold, StratifiedKFold, train_test_split
     from sklearn.neighbors import NearestNeighbors
-    from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
-    from quantile_forest import RandomForestQuantileRegressor
     plt.rcParams.update({'figure.dpi': 110, 'font.size': 9})
     warnings.filterwarnings('ignore', category=UserWarning)
+    warnings.filterwarnings('ignore', category=FutureWarning)
     """),
     md("""
     # Bagian A. Machine Learning untuk DSM
 
-    ## A1. Membaca data sampel dan kovariat
+    ## A1. Membaca titik sampel dan kovariat
 
-    Berkas `sampel_tanah_bompon.csv` memuat hasil laboratorium 50 titik pada dua kedalaman. Akhiran `_1` berarti 0–20 cm dan `_2` berarti 20–40 cm. Folder `kovariat/` berisi satu GeoTIFF untuk setiap kovariat, semuanya pada grid 10 m yang sama.
+    Berkas `titik_tutupan_material.csv` memuat 210 titik, 30 titik untuk setiap kelas. Titik ditempatkan di pusat sel grid kovariat 10 m, sekurang-kurangnya 15 m di dalam poligon kelasnya, dan disebar merata di setiap kelas. Kolom `subset` membagi titik menjadi 21 titik latih dan 9 titik uji per kelas. Folder `kovariat/` berisi satu GeoTIFF untuk setiap kovariat, sedangkan `material_acuan_10m.tif` adalah peta Malik (2017) pada grid yang sama, yang hanya dipakai sebagai pembanding.
     """),
     kode("""
-    sampel = pd.read_csv('sampel_tanah_bompon.csv')
+    titik = pd.read_csv('titik_tutupan_material.csv')
     jalur = sorted(glob.glob('kovariat/*.tif'))
     nama_kov = [os.path.basename(p)[:-4] for p in jalur]
     susunan = []
     for p in jalur:
         with rasterio.open(p) as r:
-            susunan.append(r.read(1))
-            transform, crs, tinggi, lebar = r.transform, r.crs, r.height, r.width
+            susunan.append(r.read(1).astype('float32'))
+            transform, crs, tinggi, lebar, batas_grid = r.transform, r.crs, r.height, r.width, r.bounds
     kubus = np.stack(susunan)      # kovariat x baris x kolom
-    print('Titik sampel :', len(sampel))
-    print('Kovariat     :', len(nama_kov), nama_kov)
-    print('Ukuran grid  :', kubus.shape[1:], '| CRS', crs)
-    sampel[['Titik', 'x', 'y', 'C_Organik_1', 'C_Organik_2', 'Bahan_Organik_1', 'Bahan_Organik_2', 'Lempung_1', 'pH_H2O_1', 'KPK_1']].describe().T[['count', 'min', 'mean', 'max', 'std']].round(2)
-    """),
-    md("""
-    **Periksa datanya.** Sasaran latihan ini adalah C-organik, jadi kolom itulah yang diperiksa lebih dulu. Berkas sumber memiliki dua kolom bernama `C_Organik_1`. Yang kedua diberi nama `C_Organik_2`, dan sel berikut mengujinya: bahan organik lazim dihitung dari C-organik dengan faktor 1,724, sehingga pasangan kolom yang benar seharusnya mengikuti rasio itu.
+    with rasterio.open('material_acuan_10m.tif') as r:
+        acuan = r.read(1)
+    dalam = kubus[nama_kov.index('kat_bentuklahan')] > 0     # piksel di dalam Sub-DAS
 
-    Pada berkas asli, C-organik Titik 49 tercatat 0,08% dan 0,16%, padahal bahan organiknya 1,13% dan 1,27%. Karena diduga salah ukur, untuk latihan ini nilainya sudah diperbaiki menjadi 0,66% dan 0,74%, yaitu bahan organik dibagi 1,724. Jadi sel berikut seharusnya tidak lagi menemukan titik yang menyimpang.
-    """),
-    kode("""
-    rasio_1 = sampel['Bahan_Organik_1'] / sampel['C_Organik_1']
-    rasio_2 = sampel['Bahan_Organik_2'] / sampel['C_Organik_2']
-    print('Median rasio bahan organik / C-organik:', round(rasio_1.median(), 3), 'dan', round(rasio_2.median(), 3))
-    ragu = sampel[((rasio_1 - 1.724).abs() > 0.09) | ((rasio_2 - 1.724).abs() > 0.09)]
-    print('Titik yang rasionya menyimpang:')
-    print(ragu[['Titik', 'C_Organik_1', 'Bahan_Organik_1', 'C_Organik_2', 'Bahan_Organik_2']].to_string(index=False))
+    KELAS = titik.drop_duplicates('kode').set_index('kode')['material'].sort_index()
+    WARNA = {1: '#E69F00', 2: '#56B4E9', 3: '#0072B2', 4: '#009E73', 5: '#F0E442', 6: '#D55E00', 7: '#CC79A7'}
+    PETA_WARNA = ListedColormap([WARNA[k] for k in KELAS.index])
+    luas_ha = pd.Series(np.bincount(acuan[dalam], minlength=len(KELAS) + 1)[1:] * 100 / 1e4, index=KELAS.index)
+    y = titik['kode'].values
+
+    print('Titik    :', len(titik))
+    print('Kovariat :', len(nama_kov), nama_kov)
+    print('Grid     :', kubus.shape[1:], '| CRS', crs)
+    pd.DataFrame({'Material': KELAS, 'Titik': titik['kode'].value_counts().sort_index(),
+                  'Luas pada peta (ha)': luas_ha.round(1), 'Luas (%)': (100 * luas_ha / luas_ha.sum()).round(1)})
     """),
     md("""
-    Kolom KPK juga memiliki banyak nilai kosong, karena nilai 0 pada berkas sumber dianggap tidak mungkin secara fisik.
+    Perhatikan bahwa setiap kelas memiliki 30 titik, padahal luasnya sangat berbeda. Kelas 1 hanya sekitar 3% wilayah, sedangkan kelas 2 sekitar seperempatnya. Akibat rancangan sampel seimbang ini dibahas pada Bagian C5 dan C6.
 
     ## A2. Mengambil nilai kovariat di titik sampel
 
-    Langkah ini disebut *overlay*. Hasilnya adalah tabel pemodelan: satu baris per titik, berisi nilai tanah dan semua nilai kovariat.
+    Langkah ini disebut penumpangan (*overlay*). Hasilnya adalah tabel pemodelan: satu baris per titik, berisi kelas material dan semua nilai kovariat. Tabel di bawah menampilkan median setiap kovariat numerik per kelas.
     """),
     kode("""
-    baris, kolom = rasterio.transform.rowcol(transform, sampel['x'].values, sampel['y'].values)
-    baris, kolom = np.array(baris), np.array(kolom)
-    tabel = pd.DataFrame(kubus[:, baris, kolom].T, columns=nama_kov)
+    baris, kolom = rasterio.transform.rowcol(transform, titik['x'].values, titik['y'].values)
+    tabel = pd.DataFrame(kubus[:, np.array(baris), np.array(kolom)].T, columns=nama_kov)
+    tabel.insert(0, 'kode', y)
     tabel.to_csv('hasil/tabel_kovariat_di_titik.csv', index=False)
-    tabel.describe().T[['min', 'mean', 'max']].round(2)
+    numerik = [k for k in nama_kov if not k.startswith('kat_')]
+    tabel.groupby('kode')[numerik].median().T.round(2)
     """),
     md("""
     ## A3. Model pertama: latih, uji, dan bahaya *overfitting*
 
-    Sasaran latihan adalah **C-organik 0–20 cm** (`C_Organik_1`). Bagi data menjadi 80% latih dan 20% uji, lalu latih *random forest* dengan semua kovariat numerik. Bandingkan nilainya pada data latih dan data uji.
+    Pakai pembagian yang sudah disiapkan di kolom `subset`: 147 titik latih dan 63 titik uji. Latih CatBoost dengan kovariat numerik saja, lalu bandingkan ketelitiannya pada data latih dan data uji.
+
+    **Akurasi keseluruhan** (*overall accuracy*) adalah proporsi titik yang kelasnya ditebak benar. Karena ada tujuh kelas dengan jumlah titik sama, menebak sembarang hanya memberi akurasi sekitar 1/7 = 0,14. **Kappa** menyatakan seberapa jauh akurasi melampaui kesepakatan yang terjadi karena kebetulan. **F1 makro** adalah rata-rata F1 ketujuh kelas, sehingga kelas yang selalu salah ikut menurunkan nilainya.
     """),
-    kode("""
+    kode(f"""
     def ukuran(y, p):
-        y, p = np.asarray(y, float), np.asarray(p, float)
-        e = p - y
-        return {'ME': e.mean(), 'MAE': np.abs(e).mean(), 'RMSE': np.sqrt((e ** 2).mean()),
-                'MEC': 1 - (e ** 2).sum() / ((y - y.mean()) ** 2).sum(),
-                'R2': np.corrcoef(y, p)[0, 1] ** 2}
+        return {{'Akurasi': accuracy_score(y, p), 'Kappa': cohen_kappa_score(y, p), 'F1 makro': f1_score(y, p, average='macro')}}
 
-    SASARAN = 'C_Organik_1'    # silakan coba: C_Organik_2, Lempung_1, Pasir_1, pH_H2O_1
-    numerik = [k for k in nama_kov if not k.startswith('kat_')]
-    y = sampel[SASARAN].values
+    PENGATURAN_CATBOOST = {CATBOOST_P5}
 
-    X_latih, X_uji, y_latih, y_uji = train_test_split(tabel[numerik], y, test_size=.2, random_state=42)
-    rf = RandomForestRegressor(n_estimators=500, random_state=42).fit(X_latih, y_latih)
-    pd.DataFrame({'Data latih': ukuran(y_latih, rf.predict(X_latih)), 'Data uji': ukuran(y_uji, rf.predict(X_uji))}).T.round(2)
+    def catboost_baru(**atur):
+        \"\"\"CatBoost dengan pengaturan yang sama di seluruh notebook; atur menimpa pengaturan bawaan.\"\"\"
+        return CatBoostClassifier(**{{**PENGATURAN_CATBOOST, **atur}})
+
+    latih = (titik['subset'] == 'latih').values
+    cb = catboost_baru().fit(tabel.loc[latih, numerik], y[latih])
+    pd.DataFrame({{'Data latih': ukuran(y[latih], cb.predict(tabel.loc[latih, numerik]).ravel()),
+                  'Data uji': ukuran(y[~latih], cb.predict(tabel.loc[~latih, numerik]).ravel())}}).T.round(2)
     """),
     md("""
-    **Diskusi.** Angka pada data latih hampir selalu indah karena model menghafal. Hanya angka pada data uji yang boleh dibaca sebagai kemampuan model. Pembagian tunggal seperti ini juga rapuh: dengan 10 titik uji, hasilnya sangat bergantung pada titik yang kebetulan terpilih. Jalankan sel berikut untuk melihat betapa besar pengaruhnya.
+    **Diskusi.** Ketelitian pada data latih hampir selalu indah karena model menghafal. Hanya angka pada data uji yang boleh dibaca sebagai kemampuan model. Pembagian tunggal juga rapuh, karena hasilnya bergantung pada titik yang kebetulan terpilih sebagai data uji. Sel berikut mengulang pembagian 70/30 secara acak sebanyak 30 kali.
     """),
     kode("""
     hasil = []
     for acak in range(30):
-        a, b, c, d = train_test_split(tabel[numerik], y, test_size=.2, random_state=acak)
-        m = RandomForestRegressor(n_estimators=200, random_state=0, n_jobs=-1).fit(a, c)
-        hasil.append(ukuran(d, m.predict(b))['MEC'])
-    plt.figure(figsize=(5, 2.6)); plt.hist(hasil, bins=12, color='#35978f'); plt.axvline(0, color='k')
-    plt.xlabel('MEC data uji'); plt.ylabel('Jumlah percobaan'); plt.title('Hasil 30 pembagian acak yang berbeda')
-    plt.tight_layout(); plt.savefig('hasil/sebaran_mec_pembagian_tunggal.png', dpi=150); plt.show()
-    print(f'MEC terendah {min(hasil):.2f}, median {np.median(hasil):.2f}, tertinggi {max(hasil):.2f}')
+        a, b = train_test_split(np.arange(len(y)), test_size=.3, stratify=y, random_state=acak)
+        m = catboost_baru().fit(tabel.loc[a, numerik], y[a])
+        hasil.append(accuracy_score(y[b], m.predict(tabel.loc[b, numerik]).ravel()))
+    plt.figure(figsize=(5, 2.6)); plt.hist(hasil, bins=10, color='#35978f')
+    plt.axvline(1 / 7, color='k', ls='--', lw=.8); plt.text(1 / 7, plt.ylim()[1] * .9, ' menebak', fontsize=8)
+    plt.xlabel('Akurasi data uji'); plt.ylabel('Jumlah percobaan'); plt.title('Hasil 30 pembagian acak yang berbeda')
+    plt.tight_layout(); plt.savefig('hasil/sebaran_akurasi_pembagian_tunggal.png', dpi=150); plt.show()
+    print(f'Akurasi terendah {min(hasil):.2f}, median {np.median(hasil):.2f}, tertinggi {max(hasil):.2f}')
     """),
     md("""
     # Bagian B. Penyiapan dan pemilihan kovariat
 
     ## B1. Memetakan kovariat ke faktor SCORPAN
 
-    Isi tabel berikut mengikuti Tabel 8.1. Kolom terakhir adalah alasan pedologisnya untuk C-organik, yaitu kriteria pertama pemilihan kovariat. Alasan itu adalah hipotesis yang belum tentu terbukti pada data ini. Perhatikan faktor yang kosong: tidak ada data iklim karena hampir tidak bervariasi di wilayah sekecil ini, dan peta bahan induk belum tersedia.
+    Kali ini sasaran pemodelan adalah faktor **p**, yaitu bahan induk itu sendiri. Karena itu peta material tidak dapat dipakai sebagai kovariat. Yang dipelajari adalah seberapa jauh faktor lain, terutama relief (r) dan data penginderaan jauh (o, s), mencerminkan material di bawahnya. Kolom terakhir adalah alasan geomorfologis atau pedologisnya. Alasan itu adalah hipotesis yang belum tentu terbukti pada data ini.
     """),
     kode("""
     faktor = pd.DataFrame([
-        ('ndvi_2024', 'o', 'Sentinel-2', 'Vegetasi kemarau, masukan bahan organik'),
-        ('ndvi_2025', 'o', 'Sentinel-2', 'Vegetasi kemarau, masukan bahan organik'),
-        ('kat_penggunaan_lahan', 'o', 'Foto udara', 'Pengelolaan, pengolahan, dan masukan bahan organik'),
-        ('twi', 'r', 'DEM GLO-30', 'Lokasi basah memperlambat dekomposisi'),
-        ('lereng', 'r', 'DEM GLO-30', 'Erosi mengangkut lapisan atas'),
-        ('tpi', 'r', 'DEM GLO-30', 'Punggungan kehilangan, lembah menerima material'),
-        ('tri', 'r', 'DEM GLO-30', 'Kekasaran medan'),
-        ('elevasi', 'r', 'DEM GLO-30', 'Posisi umum dalam lanskap'),
-        ('arah_utara', 'r', 'DEM GLO-30', 'Arah hadap, penerimaan cahaya dan kelembapan'),
-        ('jarak_sungai', 'r', 'Peta sungai', 'Kedekatan dengan alur dan endapan'),
-        ('kat_bentuklahan', 'r/p', 'Peta riset', 'Proses geomorfologi dan bahan'),
+        ('elevasi', 'r', 'DEMNAS', 'Satuan material menempati posisi yang berbeda dalam lanskap'),
+        ('lereng', 'r', 'DEMNAS', 'Batuan yang tahan pelapukan cenderung membentuk lereng terjal'),
+        ('tpi', 'r', 'DEMNAS', 'Punggungan dan lembah; endapan mengisi bagian yang rendah'),
+        ('tri', 'r', 'DEMNAS', 'Kekasaran medan yang dipengaruhi ketahanan batuan'),
+        ('twi', 'r', 'DEMNAS', 'Zona penerimaan aliran dan penimbunan endapan'),
+        ('arah_utara', 'r', 'DEMNAS', 'Arah hadap; kaitannya dengan material diduga lemah'),
+        ('jarak_sungai', 'r', 'Peta sungai', 'Endapan longsor dan koluvial berada di sepanjang alur'),
+        ('kat_bentuklahan', 'r', 'Peta riset', 'Bentuklahan mencerminkan proses dan bahan penyusunnya'),
+        ('kat_penggunaan_lahan', 'o', 'Foto udara', 'Penggunaan lahan dapat mengikuti kondisi tanah dari material'),
+        ('ndvi_2024', 'o', 'Sentinel-2', 'Kerapatan vegetasi yang mungkin berbeda menurut material'),
+        ('ndvi_2025', 'o', 'Sentinel-2', 'Kerapatan vegetasi yang mungkin berbeda menurut material'),
         ('bsi_2024', 'o/s', 'Sentinel-2', 'Keterbukaan tanah'),
-        ('bi_2024', 'o/s', 'Sentinel-2', 'Bahan organik menurunkan pantulan bila tanah terbuka'),
-        ('cmr_2024', 'o/s', 'Sentinel-2', 'Rasio SWIR, peka terhadap sisa tanaman dan lempung'),
+        ('bi_2024', 'o/s', 'Sentinel-2', 'Kecerahan permukaan, terkait warna tanah bila terbuka'),
+        ('cmr_2024', 'o/s', 'Sentinel-2', 'Rasio SWIR yang peka terhadap mineral lempung hasil alterasi'),
         ('sar_vv', 'o/r', 'Sentinel-1', 'Kekasaran dan kelembapan permukaan, bentuk medan'),
         ('sar_vh', 'o', 'Sentinel-1', 'Hamburan volume vegetasi'),
     ], columns=['Kovariat', 'Faktor', 'Sumber', 'Alasan'])
     faktor
     """),
     md("""
-    ## B2. Membuang kovariat yang saling berkorelasi
+    ## B2. Korelasi Pearson antarkovariat
 
-    Kovariat yang sangat mirip cukup diwakili salah satunya. Urutan pada daftar `prioritas` menyatakan penilaian pedologis untuk C-organik: masukan dari vegetasi dan kebasahan didahulukan, lalu erosi dan posisi lanskap. Kovariat di depan dipertahankan lebih dulu. Korelasi dihitung dari seluruh piksel di dalam Sub-DAS, bukan dari 50 titik saja, agar lebih stabil. Korelasi dengan nilai tanah sengaja **tidak** dipakai untuk memilih, karena dengan 50 titik cara itu mudah menangkap hubungan kebetulan.
+    Kovariat yang sangat mirip membawa informasi yang hampir sama. Korelasi Pearson (r) mengukur kemiripan linear dua kovariat, dari −1 sampai 1. Korelasi dihitung dari seluruh piksel di dalam Sub-DAS, bukan dari 210 titik saja, agar stabil. Pasangan dengan |r| ≥ 0,8 dicatat di sini, tetapi belum dibuang. Kovariat mana yang dipertahankan dari setiap pasangan diputuskan pada Bagian C4, setelah tingkat kepentingannya bagi model diketahui.
     """),
     kode("""
-    dalam = kubus[nama_kov.index('kat_bentuklahan')] > 0     # piksel di dalam Sub-DAS
     piksel = pd.DataFrame(kubus[:, dalam].T, columns=nama_kov)
-    r_pix = piksel[numerik].corr(method='spearman')
+    r_pix = piksel[numerik].corr(method='pearson')
 
     fig, ax = plt.subplots(figsize=(6.4, 5.4))
     g = ax.imshow(r_pix, cmap='RdBu_r', vmin=-1, vmax=1)
@@ -532,240 +557,473 @@ P5 = [
     for i in range(len(numerik)):
         for j in range(len(numerik)):
             ax.text(j, i, f'{r_pix.iloc[i, j]:.1f}', ha='center', va='center', fontsize=6)
-    plt.colorbar(g, label='Korelasi Spearman'); plt.tight_layout(); plt.savefig('hasil/korelasi_kovariat.png', dpi=150); plt.show()
+    plt.colorbar(g, label='Korelasi Pearson'); plt.tight_layout(); plt.savefig('hasil/korelasi_kovariat.png', dpi=150); plt.show()
 
-    prioritas = ['ndvi_2024', 'twi', 'lereng', 'jarak_sungai', 'elevasi', 'arah_utara', 'cmr_2024', 'sar_vv', 'sar_vh', 'bi_2024', 'bsi_2024', 'ndvi_2025', 'tpi', 'tri']
-    AMBANG = 0.8
-    terpilih = []
-    for k in prioritas:
-        if all(abs(r_pix.loc[k, t]) < AMBANG for t in terpilih):
-            terpilih.append(k)
-        else:
-            lawan = max(terpilih, key=lambda t: abs(r_pix.loc[k, t]))
-            print(f'{k:12s} dibuang: r = {r_pix.loc[k, lawan]:.2f} dengan {lawan}')
-    print('Terpilih:', terpilih)
+    AMBANG_R = 0.8
+    pasangan = [(a, b, r_pix.loc[a, b]) for i, a in enumerate(numerik) for b in numerik[i + 1:] if abs(r_pix.loc[a, b]) >= AMBANG_R]
+    pd.DataFrame(pasangan, columns=['Kovariat 1', 'Kovariat 2', 'r Pearson']).round(2)
     """),
     md("""
-    ## B3. Menambahkan kovariat kategorik
+    ## B3. Kovariat kategorik
 
-    *Random forest* di scikit-learn memerlukan angka, sehingga kategori diubah menjadi kolom 0/1 (*one-hot*). Kolom untuk kelas yang tidak memiliki titik sampel tetap dibuat, karena model tetap harus memprediksi piksel kelas tersebut.
+    Bentuklahan dan penggunaan lahan adalah kategori, bukan angka. Kode 1 sampai 6 pada `kat_bentuklahan` hanyalah nama, sehingga Dataran Koluvial (6) tidak "lebih besar" daripada Interfluve (1). Ada dua cara memasukkannya ke model:
+
+    1. **One-hot**, yaitu setiap kelas kategori menjadi kolom 0/1 tersendiri. Cara ini diperlukan oleh *random forest* di scikit-learn.
+    2. **Langsung sebagai kategori**, yaitu kolom berisi nama kelas dan model mengolahnya sendiri. Inilah keunggulan CatBoost. Kategori dengan sedikit nilai dikodekan *one-hot* di dalam model (parameter `one_hot_max_size`), sedangkan kategori dengan banyak nilai, misalnya kode blok kebun, diubah menjadi statistik sasaran berurutan (*ordered target statistics*) yang dirancang agar nilai sasaran tidak bocor ke dalam model (Prokhorenkova et al., 2018).
+
+    Sel berikut menyiapkan kedua bentuk tabel dan memeriksa sebaran titik per kategori.
     """),
     kode("""
-    label_bl = {1: 'Interfluve', 2: 'Lereng Atas', 3: 'Lereng Tengah', 4: 'Lereng Bawah', 5: 'Lereng Kaki Koluvial', 6: 'Dataran Koluvial'}
-    label_pl = {1: 'Agroforestri', 2: 'Tegalan', 3: 'Sawah', 4: 'Permukiman'}
+    LABEL = {'kat_bentuklahan': {1: 'Interfluve', 2: 'Lereng Atas', 3: 'Lereng Tengah', 4: 'Lereng Bawah', 5: 'Lereng Kaki Koluvial', 6: 'Dataran Koluvial'},
+             'kat_penggunaan_lahan': {1: 'Agroforestri', 2: 'Tegalan', 3: 'Sawah', 4: 'Permukiman'}}
+    KAT = list(LABEL)
 
-    def siapkan_X(df):
-        X = df[terpilih].copy()
-        for k, v in label_bl.items():
-            X['bl_' + v] = (df['kat_bentuklahan'].astype(int) == k).astype(float)
-        for k, v in label_pl.items():
-            X['pl_' + v] = (df['kat_penggunaan_lahan'].astype(int) == k).astype(float)
+    def siapkan_X(df, kolom):
+        \"\"\"Tabel prediktor untuk CatBoost: kovariat numerik apa adanya, kategori sebagai nama kelas.\"\"\"
+        X = df[kolom].copy()
+        for k in kolom:
+            if k in KAT:
+                X[k] = df[k].astype(int).map(LABEL[k])
         return X
 
-    X = siapkan_X(tabel)
-    print('Jumlah titik per bentuklahan:', tabel['kat_bentuklahan'].astype(int).map(label_bl).value_counts().to_dict())
-    print('Jumlah titik per penggunaan lahan:', tabel['kat_penggunaan_lahan'].astype(int).map(label_pl).value_counts().to_dict())
-    print('Ukuran tabel pemodelan:', X.shape)
-    X.assign(**{SASARAN: y}).to_csv('hasil/tabel_pemodelan.csv', index=False)
+    def satu_panas(X):
+        \"\"\"Tabel prediktor untuk random forest: setiap kelas kategori menjadi kolom 0/1.\"\"\"
+        X = X.copy()
+        for k in [c for c in X.columns if c in KAT]:
+            for nilai in LABEL[k].values():
+                X[f'{k}={nilai}'] = (X[k] == nilai).astype(float)
+            X = X.drop(columns=k)
+        return X
+
+    semua = numerik + KAT
+    X_semua = siapkan_X(tabel, semua)
+    print('Tabel CatBoost:', X_semua.shape, '| tabel random forest (one-hot):', satu_panas(X_semua).shape)
+    print('Titik per penggunaan lahan:', X_semua['kat_penggunaan_lahan'].value_counts().to_dict())
+    pd.crosstab(X_semua['kat_bentuklahan'], titik['kode'].rename('kelas material'), margins=True, margins_name='Jumlah')
     """),
     md("""
     # Bagian C. Pembangunan model DSM
 
     ## C1. Skema validasi
 
-    Dua skema dibandingkan. **Acak** membagi titik secara acak ke dalam lima kelompok. **Spasial** mengelompokkan titik yang berdekatan menjadi lima blok, lalu menyisihkan satu blok setiap putaran, sehingga data uji tidak punya tetangga dekat di data latih.
+    Tiga skema dibandingkan:
+
+    1. **Acak**, yaitu titik dibagi acak ke dalam lima lipatan dengan jumlah per kelas yang seimbang.
+    2. **Blok spasial**, yaitu wilayah dibagi menjadi blok persegi 400 m dan setiap blok utuh masuk ke satu lipatan. Titik uji tidak memiliki tetangga dekat di data latih, tetapi kelas yang sama masih terwakili di blok lain.
+    3. **Zona**, yaitu titik dikelompokkan menjadi lima zona besar dengan *k-means*. Skema ini meniru penerapan model ke wilayah yang benar-benar baru, misalnya kebun tetangga.
+
+    Rujukan konsepnya ada pada Modul 8, Gambar 8.2.
     """),
     kode("""
-    blok = KMeans(n_clusters=5, n_init=10, random_state=0).fit_predict(sampel[['x', 'y']])
-    fig, ax = plt.subplots(figsize=(3.4, 5))
-    with rasterio.open('kovariat/lereng.tif') as r:
-        ax.imshow(np.where(dalam, kubus[nama_kov.index('lereng')], np.nan), extent=[r.bounds.left, r.bounds.right, r.bounds.bottom, r.bounds.top], cmap='Greys')
-    ax.scatter(sampel.x, sampel.y, c=blok, cmap='tab10', s=26, edgecolor='k', lw=.3)
-    ax.set_title('Lima blok validasi spasial'); ax.axis('off')
-    plt.tight_layout(); plt.savefig('hasil/blok_validasi.png', dpi=150); plt.show()
-    print('Jumlah titik per blok:', np.bincount(blok))
+    SISI_BLOK = 400
+    blok = (np.floor((titik['x'].values - batas_grid.left) / SISI_BLOK).astype(int) * 100
+            + np.floor((titik['y'].values - batas_grid.bottom) / SISI_BLOK).astype(int))
+    zona = KMeans(n_clusters=5, n_init=10, random_state=0).fit_predict(titik[['x', 'y']])
+    iris = {'Acak': list(StratifiedKFold(5, shuffle=True, random_state=0).split(tabel, y)),
+            'Blok spasial': list(GroupKFold(5).split(tabel, y, groups=blok)),
+            'Zona': list(GroupKFold(5).split(tabel, y, groups=zona))}
+
+    fig, ax = plt.subplots(1, 3, figsize=(9, 5))
+    latar = np.where(dalam, kubus[nama_kov.index('lereng')], np.nan)
+    luasan = [batas_grid.left, batas_grid.right, batas_grid.bottom, batas_grid.top]
+    for a, (skema, lipatan) in zip(ax, iris.items()):
+        nomor = np.zeros(len(y), int)
+        for i, (_, uji) in enumerate(lipatan):
+            nomor[uji] = i
+        a.imshow(latar, extent=luasan, cmap='Greys'); a.scatter(titik.x, titik.y, c=nomor, cmap='tab10', vmin=0, vmax=9, s=12, edgecolor='k', lw=.3)
+        a.set_title(skema); a.axis('off')
+        hilang = [sorted(set(KELAS.index) - set(y[latih])) for latih, _ in lipatan]
+        print(f'{skema:13s} titik uji per lipatan {[len(u) for _, u in lipatan]} | kelas yang tidak ada di data latih: {hilang}')
+    plt.suptitle('Lipatan validasi (warna = nomor lipatan)'); plt.tight_layout(); plt.savefig('hasil/skema_validasi.png', dpi=150); plt.show()
     """),
     md("""
-    ## C2. Membandingkan model dengan pembanding yang paling sederhana
+    ## C2. Membandingkan model dengan pembanding sederhana
 
-    Model harus dibandingkan dengan sesuatu. Pembanding paling sederhana adalah **menebak rata-rata**, yaitu MEC mendekati 0. Pembanding kedua adalah **rata-rata per bentuklahan**, yang setara dengan peta tanah konvensional: setiap satuan peta diberi satu nilai. Jika model yang rumit tidak mengalahkan keduanya, kerumitan itu belum memberi manfaat.
+    Model harus dibandingkan dengan sesuatu. Ada dua pembanding sederhana:
+
+    1. **Kelas terbanyak**, yaitu selalu menebak kelas yang paling banyak di data latih.
+    2. **Kelas terbanyak per bentuklahan**, yaitu setiap bentuklahan diberi satu kelas material, seperti satuan pada peta konvensional.
+
+    Setelah itu, *random forest* (dengan *one-hot*) dan CatBoost dilatih dengan ke-16 kovariat. Jika model yang rumit tidak mengalahkan pembanding sederhana, kerumitan itu belum memberi manfaat.
     """),
     kode("""
-    class RataKelas:
-        \"\"\"Memprediksi rata-rata per kelas bentuklahan, seperti satuan pada peta tanah.\"\"\"
+    class KelasTerbanyak:
         def fit(self, X, y):
-            kolom = [c for c in X.columns if c.startswith('bl_')]
-            self.kolom, self.umum = kolom, y.mean()
-            self.nilai = {c: y[X[c].values == 1].mean() if (X[c].values == 1).any() else y.mean() for c in kolom}
+            self.kelas = pd.Series(y).mode()[0]; return self
+        def predict(self, X):
+            return np.full(len(X), self.kelas)
+
+    class KelasPerBentuklahan:
+        \"\"\"Satu kelas material untuk setiap bentuklahan, seperti satuan pada peta konvensional.\"\"\"
+        def fit(self, X, y):
+            s = pd.Series(y, index=X.index)
+            self.umum = s.mode()[0]
+            self.peta = s.groupby(X['kat_bentuklahan']).agg(lambda v: v.mode()[0]).to_dict()
             return self
         def predict(self, X):
-            p = np.full(len(X), self.umum)
-            for c in self.kolom:
-                p[X[c].values == 1] = self.nilai[c]
-            return p
+            return X['kat_bentuklahan'].map(self.peta).fillna(self.umum).astype(int).values
 
-    class RataUmum:
+    class RFSatuPanas:
+        \"\"\"Random forest; kategori diubah menjadi one-hot lebih dulu.\"\"\"
         def fit(self, X, y):
-            self.n = y.mean(); return self
+            self.m = RandomForestClassifier(n_estimators=500, random_state=0, n_jobs=-1).fit(satu_panas(X), y)
+            self.classes_ = self.m.classes_; return self
         def predict(self, X):
-            return np.full(len(X), self.n)
+            return self.m.predict(satu_panas(X))
+        def predict_proba(self, X):
+            return self.m.predict_proba(satu_panas(X))
 
-    def model_baru(nama):
-        if nama == 'Menebak rata-rata': return RataUmum()
-        if nama == 'Rata-rata per bentuklahan': return RataKelas()
-        if nama == 'Regresi linear': return make_pipeline(StandardScaler(), LinearRegression())
-        return RandomForestRegressor(n_estimators=500, min_samples_leaf=3, max_features=.5, random_state=0, n_jobs=-1)
+    class CatBoostKategori:
+        \"\"\"CatBoost yang membaca kolom kategori secara langsung.\"\"\"
+        def __init__(self, **atur):
+            self.atur = atur
+        def fit(self, X, y):
+            self.m = catboost_baru(**self.atur).fit(X, y, cat_features=[k for k in X.columns if k in KAT])
+            self.classes_ = self.m.classes_; return self
+        def predict(self, X):
+            return self.m.predict(X).ravel()
+        def predict_proba(self, X):
+            return self.m.predict_proba(X)
 
-    def validasi(nama, X, y, iris):
-        p = np.zeros(len(y))
-        for latih, uji in iris:
-            p[uji] = model_baru(nama).fit(X.iloc[latih], y[latih]).predict(X.iloc[uji])
-        return p
+    def validasi(buat_model, kolom, skema):
+        \"\"\"Validasi silang: prediksi dan peluang setiap titik saat lipatannya disisihkan, beserta model tiap lipatan.\"\"\"
+        X = siapkan_X(tabel, kolom)
+        p, peluang, model = np.zeros(len(y), int), np.zeros((len(y), len(KELAS))), []
+        for latih, uji in iris[skema]:
+            m = buat_model().fit(X.iloc[latih], y[latih])
+            p[uji] = m.predict(X.iloc[uji])
+            if hasattr(m, 'predict_proba'):
+                peluang[np.ix_(uji, np.asarray(m.classes_) - 1)] = m.predict_proba(X.iloc[uji])
+            model.append(m)
+        return p, peluang, model
 
-    iris_acak = list(KFold(5, shuffle=True, random_state=0).split(X))
-    iris_spasial = list(GroupKFold(5).split(X, groups=blok))
-    baris = []
-    for nama in ['Menebak rata-rata', 'Rata-rata per bentuklahan', 'Regresi linear', 'Random forest']:
-        for skema, iris in [('Acak', iris_acak), ('Spasial', iris_spasial)]:
-            u = ukuran(y, validasi(nama, X, y, iris))
-            if nama == 'Menebak rata-rata':
-                u['R2'] = np.nan      # prediksi hampir konstan, korelasinya tidak bermakna
-            baris.append({'Model': nama, 'Validasi': skema, **u})
+    MODEL = {'Kelas terbanyak': KelasTerbanyak, 'Kelas terbanyak per bentuklahan': KelasPerBentuklahan,
+             'Random forest (one-hot)': RFSatuPanas, 'CatBoost': CatBoostKategori}
+    hasil_cv, baris = {}, []
+    for nama, buat in MODEL.items():
+        for skema in iris:
+            hasil_cv[(nama, skema)] = validasi(buat, semua, skema)
+            baris.append({'Model': nama, 'Validasi': skema, **ukuran(y, hasil_cv[(nama, skema)][0])})
     metrik = pd.DataFrame(baris).round(2)
-    metrik.to_csv(f'hasil/metrik_validasi_{SASARAN}.csv', index=False)
-    metrik
+    metrik.to_csv('hasil/metrik_validasi_material.csv', index=False)
+    metrik.pivot(index='Model', columns='Validasi', values=['Akurasi', 'F1 makro']).loc[list(MODEL)]
     """),
     md("""
-    **Cara membaca.** MEC di bawah 0 berarti prediksi lebih buruk daripada menebak rata-rata. Baris "Menebak rata-rata" sedikit di bawah nol karena setiap putaran memakai rata-rata data latihnya, bukan rata-rata seluruh titik; itulah patokan yang harus dilampaui. Kolom R² tidak peka terhadap bias (Tabel 8.3), sehingga jangan membacanya sendirian.
+    **Cara membaca.** Akurasi 0,14 setara dengan menebak sembarang. Karena jumlah titik per kelas sama, kappa di sini hanyalah skala lain dari akurasi, sehingga tabel ringkas di atas hanya menampilkan akurasi dan F1 makro; kappa tersimpan di `hasil/metrik_validasi_material.csv`. Bandingkan ketiga skema: selisih antara validasi acak dan blok spasial menunjukkan seberapa besar akurasi acak terbantu oleh titik tetangga, sedangkan skema zona menunjukkan apa yang terjadi bila model dipakai di wilayah yang belum pernah dilihatnya.
 
-    ## C3. Apakah sifat tanah lain lebih mudah diprediksi?
+    **Apakah cara CatBoost mengodekan kategori berpengaruh?** Notebook ini memakai `one_hot_max_size=10`, sehingga kedua kovariat kategorik (6 dan 4 kelas) dikodekan *one-hot* di dalam CatBoost. Dengan nilai bawaannya, yaitu 2, CatBoost memakai statistik sasaran berurutan untuk keduanya. Sel berikut membandingkan kedua cara pada validasi blok spasial.
     """),
     kode("""
-    baris = []
-    for t in ['C_Organik_1', 'C_Organik_2', 'Lempung_1', 'Lempung_2', 'Pasir_1', 'Debu_1', 'pH_H2O_1']:
-        yt = sampel[t].values
-        pa = validasi('Random forest', X, yt, iris_acak)
-        ps = validasi('Random forest', X, yt, iris_spasial)
-        pk = validasi('Rata-rata per bentuklahan', X, yt, iris_spasial)
-        baris.append({'Sifat': t, 'Rerata': yt.mean(), 'SD': yt.std(ddof=1), 'RMSE spasial': ukuran(yt, ps)['RMSE'],
-                      'MEC RF acak': ukuran(yt, pa)['MEC'], 'MEC RF spasial': ukuran(yt, ps)['MEC'], 'MEC per bentuklahan': ukuran(yt, pk)['MEC']})
-    semua = pd.DataFrame(baris).round(2)
-    semua.to_csv('hasil/metrik_semua_sifat.csv', index=False)
-    semua
+    for nama, atur in [('one-hot di dalam CatBoost (one_hot_max_size=10)', {}), ('statistik sasaran (one_hot_max_size=2, bawaan)', {'one_hot_max_size': 2})]:
+        mulai = time.time()
+        p = validasi(lambda: CatBoostKategori(**atur), semua, 'Blok spasial')[0]
+        print(f'{nama:50s} akurasi {accuracy_score(y, p):.2f} | F1 makro {f1_score(y, p, average="macro"):.2f} | {time.time() - mulai:.0f} detik')
     """),
     md("""
-    ## C4. Kovariat apa yang dipakai model, dan bolehkah dipercaya?
+    ## C3. Kelas mana yang tertukar?
 
-    Tingkat kepentingan dihitung dengan permutasi pada data di luar blok latih. Jika MEC model mendekati atau di bawah nol, urutan ini tidak boleh ditafsirkan sebagai temuan pedologis: model yang tidak mampu memprediksi tidak dapat memberi tahu apa yang mengendalikan tanah (Wadoux, Samuel-Rosa, et al., 2020).
+    Akurasi keseluruhan menyembunyikan perbedaan antarkelas. Matriks kebingungan (*confusion matrix*) menampilkan, untuk setiap kelas sebenarnya (baris), ke kelas mana titik-titiknya ditebak (kolom). **Recall** adalah proporsi titik suatu kelas yang ditebak benar, sedangkan **presisi** adalah proporsi tebakan suatu kelas yang memang benar. Hasil di bawah berasal dari CatBoost pada validasi blok spasial.
     """),
     kode("""
-    pent = []
-    for latih, uji in iris_spasial:
-        m = model_baru('Random forest').fit(X.iloc[latih], y[latih])
-        pent.append(permutation_importance(m, X.iloc[uji], y[uji], n_repeats=20, random_state=0, scoring='neg_root_mean_squared_error').importances_mean)
-    pent = pd.Series(np.mean(pent, axis=0), index=X.columns).sort_values()
-    fig, ax = plt.subplots(figsize=(6, 4.4))
-    ax.barh(pent.index, pent.values, color=['#b2182b' if v < 0 else '#2166ac' for v in pent.values])
-    ax.axvline(0, color='k', lw=.6); ax.set(xlabel='Kenaikan RMSE saat kovariat diacak', title=f'Kepentingan kovariat, {SASARAN}')
+    p_cb = hasil_cv[('CatBoost', 'Blok spasial')][0]
+    mk = confusion_matrix(y, p_cb, labels=KELAS.index)
+    fig, ax = plt.subplots(figsize=(4.8, 4.2))
+    ax.imshow(mk / mk.sum(axis=1, keepdims=True), cmap='Blues', vmin=0, vmax=1)
+    for i in range(len(KELAS)):
+        for j in range(len(KELAS)):
+            ax.text(j, i, mk[i, j], ha='center', va='center', fontsize=8, color='white' if mk[i, j] > 15 else 'black')
+    ax.set_xticks(range(len(KELAS)), KELAS.index); ax.set_yticks(range(len(KELAS)), KELAS.index)
+    ax.set(xlabel='Kelas tebakan', ylabel='Kelas sebenarnya', title='CatBoost, validasi blok spasial')
+    plt.tight_layout(); plt.savefig('hasil/matriks_kebingungan.png', dpi=150); plt.show()
+    pd.DataFrame({'Material': KELAS,
+                  'Recall': recall_score(y, p_cb, labels=KELAS.index, average=None),
+                  'Presisi': precision_score(y, p_cb, labels=KELAS.index, average=None, zero_division=0),
+                  'F1': f1_score(y, p_cb, labels=KELAS.index, average=None)}, index=KELAS.index).round(2)
+    """),
+    md("""
+    ## C4. Memilih kovariat: tingkat kepentingan dan korelasi Pearson
+
+    Kovariat untuk model akhir dipilih dengan dua informasi:
+
+    1. **Tingkat kepentingan** (*variable importance*), dihitung dengan permutasi: nilai satu kovariat di data uji diacak, lalu diukur seberapa besar akurasi turun. Semakin besar penurunannya, semakin penting kovariat itu bagi model. Permutasi dilakukan pada lipatan blok spasial, yaitu pada data yang tidak dipakai melatih model, karena kepentingan yang dihitung dari data latih dapat memberi nilai tinggi pada kovariat yang hanya membantu model menghafal (Meyer et al., 2019).
+    2. **Korelasi Pearson** dari Bagian B2, untuk menemukan kovariat yang saling menggantikan.
+
+    Sebagai perbandingan, ditampilkan pula kepentingan bawaan CatBoost (*PredictionValuesChange*), yang dihitung dari data latih.
+    """),
+    kode("""
+    def kepentingan_permutasi(model, X, y_uji, ulang=10, seed=0):
+        \"\"\"Penurunan akurasi rata-rata saat satu kovariat diacak.\"\"\"
+        rng = np.random.default_rng(seed)
+        dasar = accuracy_score(y_uji, model.predict(X))
+        turun = {}
+        for k in X.columns:
+            nilai = []
+            for _ in range(ulang):
+                Xp = X.copy()
+                Xp[k] = rng.permutation(Xp[k].values)
+                nilai.append(dasar - accuracy_score(y_uji, model.predict(Xp)))
+            turun[k] = np.mean(nilai)
+        return pd.Series(turun)
+
+    model_cb = hasil_cv[('CatBoost', 'Blok spasial')][2]
+    per_lipatan = pd.DataFrame([kepentingan_permutasi(m, X_semua.iloc[uji], y[uji]) for m, (_, uji) in zip(model_cb, iris['Blok spasial'])])
+    bawaan = pd.DataFrame([m.m.get_feature_importance() for m in model_cb], columns=semua).mean()
+    kepentingan = pd.DataFrame({'Permutasi': per_lipatan.mean(), 'Simpangan antarlipatan': per_lipatan.std(),
+                                'Bawaan CatBoost (%)': bawaan}).sort_values('Permutasi', ascending=False)
+
+    fig, ax = plt.subplots(figsize=(6, 4.6))
+    urut = kepentingan.iloc[::-1]
+    ax.barh(urut.index, urut['Permutasi'], xerr=urut['Simpangan antarlipatan'], color=['#b2182b' if v <= 0 else '#2166ac' for v in urut['Permutasi']], error_kw={'lw': .6})
+    ax.axvline(0, color='k', lw=.6); ax.set(xlabel='Penurunan akurasi saat kovariat diacak', title='Kepentingan kovariat (validasi blok spasial)')
     plt.tight_layout(); plt.savefig('hasil/kepentingan_kovariat.png', dpi=150); plt.show()
+    kepentingan.round(3)
     """),
     md("""
-    ## C5. Model akhir dan peta prediksi
+    Aturan pemilihan:
 
-    Model akhir dilatih dengan semua titik memakai *quantile regression forest* (QRF), sehingga setiap piksel memperoleh median dan interval prediksi 90%. Peta ini tetap dibuat meskipun validasinya lemah, karena tujuan latihan adalah menguasai alur kerja dan belajar membacanya secara kritis.
+    1. Urutkan kovariat menurut kepentingan permutasi, dari yang terbesar.
+    2. Buang kovariat yang kepentingannya ≤ 0, karena mengacaknya tidak menurunkan akurasi pada data yang belum pernah dilihat model.
+    3. Telusuri dari atas. Kovariat numerik yang berkorelasi |r| ≥ 0,8 dengan kovariat yang sudah terpilih dibuang, sehingga dari setiap pasangan yang mirip hanya yang lebih penting yang dipertahankan.
+
+    Kovariat kategorik hanya diperiksa dengan aturan 2.
     """),
     kode("""
-    qrf = RandomForestQuantileRegressor(n_estimators=500, min_samples_leaf=3, max_features=.5, random_state=0, n_jobs=-1)
-    qrf.fit(X, y)
-    X_piksel = siapkan_X(piksel)[X.columns]
-    q = qrf.predict(X_piksel, quantiles=[.05, .5, .95])
+    def pilih_kovariat(kepentingan_permutasi, r, ambang=AMBANG_R):
+        terpilih, keputusan = [], {}
+        for k, v in kepentingan_permutasi.sort_values(ascending=False).items():
+            if v <= 0:
+                keputusan[k] = f'dibuang: kepentingan <= 0 ({v:.4f})'
+                continue
+            lawan = [t for t in terpilih if k in r.index and t in r.index and abs(r.loc[k, t]) >= ambang]
+            if lawan:
+                keputusan[k] = f'dibuang: r = {r.loc[k, lawan[0]]:.2f} dengan {lawan[0]} yang lebih penting'
+                continue
+            terpilih.append(k)
+            keputusan[k] = 'dipakai'
+        return terpilih, keputusan
+
+    terpilih, keputusan = pilih_kovariat(kepentingan['Permutasi'], r_pix)
+    hasil_terpilih = {skema: validasi(CatBoostKategori, terpilih, skema) for skema in ['Acak', 'Blok spasial']}
+    banding = []
+    for label, kolom, sumber in [('Semua kovariat', semua, {s: hasil_cv[('CatBoost', s)] for s in hasil_terpilih}), ('Kovariat terpilih', terpilih, hasil_terpilih)]:
+        for skema in hasil_terpilih:
+            banding.append({'Kovariat': label, 'Jumlah': len(kolom), 'Validasi': skema, **ukuran(y, sumber[skema][0])})
+    print('Kovariat terpilih:', terpilih)
+    display(pd.Series(keputusan, name='Keputusan').to_frame())
+    pd.DataFrame(banding).round(2)
+    """),
+    md("""
+    **Catatan kejujuran.** Kovariat di atas dipilih memakai lipatan yang sama dengan yang dipakai untuk menilainya, sehingga angka "Kovariat terpilih" sedikit optimistis. Cara yang ketat adalah memilih kovariat di dalam setiap lipatan, hanya dari data latihnya (*nested*). Sel berikut melakukannya. Perhatikan juga apakah kovariat yang terpilih sama dari satu lipatan ke lipatan lain.
+    """),
+    kode("""
+    p_nested, pilihan_per_lipatan = np.zeros(len(y), int), []
+    for latih, uji in iris['Blok spasial']:
+        imp = []
+        for a, b in GroupKFold(4).split(latih, y[latih], groups=blok[latih]):
+            m = CatBoostKategori().fit(X_semua.iloc[latih[a]], y[latih[a]])
+            imp.append(kepentingan_permutasi(m, X_semua.iloc[latih[b]], y[latih[b]], ulang=5))
+        pilih, _ = pilih_kovariat(pd.DataFrame(imp).mean(), r_pix)
+        pilihan_per_lipatan.append(pilih)
+        X_pilih = siapkan_X(tabel, pilih)
+        p_nested[uji] = CatBoostKategori().fit(X_pilih.iloc[latih], y[latih]).predict(X_pilih.iloc[uji])
+    print('Nested, validasi blok spasial:', {k: round(v, 2) for k, v in ukuran(y, p_nested).items()})
+    for i, s in enumerate(pilihan_per_lipatan, 1):
+        print(f'Lipatan {i}: {len(s)} kovariat, {s}')
+    """),
+    md("""
+    ## C5. Bagaimana jika datanya tidak seimbang?
+
+    Data latihan ini sengaja seimbang: setiap kelas memiliki 30 titik. Di lapangan keadaan itu jarang terjadi. Bila titik disebar acak di seluruh kebun, jumlah titik setiap kelas kira-kira sebanding dengan luasnya, sehingga kelas yang sempit hanya memperoleh sedikit titik. Model lalu cenderung mengabaikan kelas tersebut, karena salah menebaknya hampir tidak menurunkan akurasi keseluruhan.
+
+    Sel berikut menirukan keadaan itu. Pada setiap lipatan blok spasial, titik latih dikurangi sehingga jumlahnya sebanding dengan luas kelas pada peta acuan, sedangkan data uji tidak diubah. Tiga cara dibandingkan:
+
+    1. **Tanpa penanganan**.
+    2. **Bobot kelas**, yaitu kesalahan pada kelas yang sedikit titiknya diberi bobot lebih besar. CatBoost menyediakannya lewat `auto_class_weights='Balanced'`: bobot setiap kelas sama dengan jumlah titik kelas terbanyak dibagi jumlah titik kelas itu.
+    3. **SMOTE-NC**, yaitu titik sintetis dibuat untuk kelas yang sedikit dengan menginterpolasi antara sebuah titik dan tetangganya di ruang kovariat (Chawla et al., 2002). Akhiran NC (*nominal and continuous*) berarti kovariat kategorik ikut ditangani: titik sintetis mengambil kategori yang paling sering di antara tetangganya.
+
+    Penyeimbangan **hanya** dilakukan pada data latih setiap lipatan. Jika titik sintetis dibuat sebelum data dibagi, informasi dari titik uji ikut masuk ke data latih dan akurasinya menjadi semu. Untuk sasaran kontinu, misalnya nilai C-organik tinggi yang jarang dijumpai, padanannya adalah SMOGN (Branco et al., 2017).
+    """),
+    kode("""
+    porsi = luas_ha / luas_ha.max()
+
+    def kurangi_sebanding_luas(idx, seed):
+        \"\"\"Ambil sebagian titik dari idx sehingga jumlah per kelas sebanding dengan luas kelas.\"\"\"
+        rng = np.random.default_rng(seed)
+        simpan = []
+        for k in KELAS.index:
+            anggota = idx[y[idx] == k]
+            n = max(1, int(round(len(anggota) * porsi[k])))
+            simpan.extend(rng.choice(anggota, n, replace=False))
+        return np.sort(simpan)
+
+    def smote_nc(X, yy):
+        \"\"\"Tambah titik sintetis sampai setiap kelas sama banyak dengan kelas terbanyak.\"\"\"
+        jumlah = pd.Series(yy).value_counts()
+        sasaran = {k: jumlah.max() for k, n in jumlah.items() if 2 <= n < jumlah.max()}   # kelas dengan 1 titik tidak dapat diinterpolasi
+        if not sasaran:
+            return X, yy
+        k_tetangga = min(5, min(jumlah[k] for k in sasaran) - 1)
+        kolom_kat = [i for i, c in enumerate(X.columns) if c in KAT]
+        if kolom_kat:
+            alat = SMOTENC(categorical_features=kolom_kat, sampling_strategy=sasaran, k_neighbors=k_tetangga, random_state=0)
+        else:
+            alat = SMOTE(sampling_strategy=sasaran, k_neighbors=k_tetangga, random_state=0)
+        return alat.fit_resample(X, yy)
+
+    X_t = siapkan_X(tabel, terpilih)
+    CARA = ['Tanpa penanganan', 'Bobot kelas', 'SMOTE-NC']
+    rekap, recall_kelas = [], []
+    for ulang in range(3):
+        p = {c: np.zeros(len(y), int) for c in CARA}
+        for latih, uji in iris['Blok spasial']:
+            s = kurangi_sebanding_luas(latih, ulang)
+            p['Tanpa penanganan'][uji] = CatBoostKategori().fit(X_t.iloc[s], y[s]).predict(X_t.iloc[uji])
+            p['Bobot kelas'][uji] = CatBoostKategori(auto_class_weights='Balanced').fit(X_t.iloc[s], y[s]).predict(X_t.iloc[uji])
+            Xs, ys = smote_nc(X_t.iloc[s].reset_index(drop=True), y[s])
+            p['SMOTE-NC'][uji] = CatBoostKategori().fit(Xs, ys).predict(X_t.iloc[uji])
+        for c in CARA:
+            rekap.append({'Cara': c, **ukuran(y, p[c])})
+            recall_kelas.append(pd.Series(recall_score(y, p[c], labels=KELAS.index, average=None), index=KELAS.index, name=c))
+    contoh = kurangi_sebanding_luas(iris['Blok spasial'][0][0], 0)
+    print('Contoh jumlah titik latih per kelas setelah dikurangi:', pd.Series(y[contoh]).value_counts().sort_index().to_dict())
+    recall_rata = pd.concat(recall_kelas, axis=1).T.groupby(level=0).mean().loc[CARA]
+    fig, ax = plt.subplots(figsize=(6.4, 3))
+    recall_rata.T.plot.bar(ax=ax, color=['#bdbdbd', '#2166ac', '#b2182b'], width=.8)
+    ax.set(xlabel='Kelas material', ylabel='Recall', title='Recall per kelas, rata-rata tiga ulangan'); ax.legend(fontsize=7)
+    plt.xticks(rotation=0); plt.tight_layout(); plt.savefig('hasil/recall_data_tidak_seimbang.png', dpi=150); plt.show()
+    display(recall_rata.round(2))
+    pd.DataFrame(rekap).groupby('Cara').mean().loc[CARA].round(2)
+    """),
+    md("""
+    Penyeimbangan juga mengubah **luas** setiap kelas pada peta. Sel berikut melatih model dengan seluruh titik yang dikurangi sebanding luas, lalu membandingkan proporsi kelas pada peta hasilnya dengan peta acuan. Baris pertama memakai sampel seimbang 30 titik per kelas seperti pada model akhir.
+    """),
+    kode("""
+    X_piksel_t = siapkan_X(piksel, terpilih)
+    s = kurangi_sebanding_luas(np.arange(len(y)), 0)
+    Xs, ys = smote_nc(X_t.iloc[s].reset_index(drop=True), y[s])
+    pilihan = {'Sampel seimbang (30 per kelas)': CatBoostKategori().fit(X_t, y),
+               'Sebanding luas, tanpa penanganan': CatBoostKategori().fit(X_t.iloc[s], y[s]),
+               'Sebanding luas, bobot kelas': CatBoostKategori(auto_class_weights='Balanced').fit(X_t.iloc[s], y[s]),
+               'Sebanding luas, SMOTE-NC': CatBoostKategori().fit(Xs, ys)}
+    proporsi = {'Peta acuan': luas_ha / luas_ha.sum()}
+    for nama, m in pilihan.items():
+        proporsi[nama] = pd.Series(m.predict(X_piksel_t)).value_counts(normalize=True).reindex(KELAS.index, fill_value=0)
+    (100 * pd.DataFrame(proporsi).T).round(1)
+    """),
+    md("""
+    ## C6. Model akhir dan peta tutupan material
+
+    Model akhir adalah CatBoost dengan kovariat terpilih, dilatih dengan seluruh 210 titik. Setiap piksel memperoleh kelas dengan peluang tertinggi beserta nilai peluang itu.
+    """),
+    kode("""
+    model_akhir = pilihan['Sampel seimbang (30 per kelas)']
+    P = model_akhir.predict_proba(X_piksel_t)            # peluang setiap kelas untuk setiap piksel
+    kelas_piksel = np.asarray(model_akhir.classes_)[P.argmax(axis=1)]
+    peluang_maks = P.max(axis=1)
+    entropi = -(P * np.log(np.clip(P, 1e-12, 1))).sum(axis=1) / np.log(P.shape[1])
 
     def ke_peta(nilai):
         peta = np.full((tinggi, lebar), np.nan, dtype='float32')
         peta[dalam] = nilai
         return peta
 
-    def simpan(peta, nama):
-        with rasterio.open(f'hasil/{nama}.tif', 'w', driver='GTiff', height=tinggi, width=lebar, count=1, dtype='float32', crs=crs, transform=transform, nodata=-9999, compress='deflate') as d:
-            d.write(np.where(np.isnan(peta), -9999, peta), 1)
+    def simpan(peta, nama, kelas=False):
+        \"\"\"Simpan GeoTIFF. Peta kelas disimpan sebagai bilangan bulat dengan nodata 0.\"\"\"
+        isi = np.nan_to_num(peta, nan=0 if kelas else -9999).astype('uint8' if kelas else 'float32')
+        with rasterio.open(f'hasil/{nama}.tif', 'w', driver='GTiff', height=tinggi, width=lebar, count=1, dtype=isi.dtype,
+                           crs=crs, transform=transform, nodata=0 if kelas else -9999, compress='deflate') as d:
+            d.write(isi, 1)
 
-    peta_median, peta_pi90 = ke_peta(q[:, 1]), ke_peta(q[:, 2] - q[:, 0])
-    simpan(peta_median, f'prediksi_{SASARAN}')
-    simpan(peta_pi90, f'pi90_{SASARAN}')
+    peta_kelas = ke_peta(kelas_piksel)
+    simpan(peta_kelas, 'prediksi_material', kelas=True)
+    # gaya QGIS peta acuan dipakai ulang, agar peta prediksi tampil dengan warna dan nama kelas yang sama
+    shutil.copy('material_acuan_10m.qml', 'hasil/prediksi_material.qml')
+    simpan(ke_peta(peluang_maks), 'peluang_maks_material')
+    simpan(ke_peta(entropi), 'entropi_material')
 
-    fig, ax = plt.subplots(1, 2, figsize=(8, 5.4))
-    a = ax[0].imshow(peta_median, cmap='YlOrBr'); ax[0].set_title(f'Prediksi median {SASARAN} (%)'); plt.colorbar(a, ax=ax[0], shrink=.7)
-    b = ax[1].imshow(peta_pi90, cmap='magma_r'); ax[1].set_title('Lebar interval prediksi 90% (PI90)'); plt.colorbar(b, ax=ax[1], shrink=.7)
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5.6))
+    ax[0].imshow(np.where(dalam, acuan, np.nan), cmap=PETA_WARNA, vmin=.5, vmax=7.5, interpolation='nearest'); ax[0].set_title('Peta acuan (Malik, 2017)')
+    ax[1].imshow(peta_kelas, cmap=PETA_WARNA, vmin=.5, vmax=7.5, interpolation='nearest'); ax[1].set_title('Prediksi CatBoost')
+    for a in ax: a.axis('off')
+    fig.legend(handles=[Patch(color=WARNA[k], label=textwrap.fill(f'{k}. {v}', 34)) for k, v in KELAS.items()], loc='center right', fontsize=7, labelspacing=1)
+    plt.tight_layout(rect=(0, 0, .7, 1)); plt.savefig('hasil/peta_prediksi_material.png', dpi=150); plt.show()
+
+    sama = kelas_piksel == acuan[dalam]
+    print(f'Kesesuaian dengan peta acuan: {100 * sama.mean():.1f}% piksel')
+    pd.DataFrame({'Material': KELAS, 'Acuan (ha)': luas_ha.round(1),
+                  'Prediksi (ha)': (pd.Series(kelas_piksel).value_counts().reindex(KELAS.index, fill_value=0) * 100 / 1e4).round(1),
+                  'Kesesuaian per kelas acuan (%)': [round(100 * sama[acuan[dalam] == k].mean(), 1) for k in KELAS.index]})
+    """),
+    md("""
+    Bandingkan luas prediksi dengan luas acuan. Model akhir dilatih dengan jumlah titik yang sama untuk setiap kelas, sehingga model menganggap ketujuh kelas sama umumnya. Akibatnya, kelas yang sempit cenderung diprediksi terlalu luas dan kelas yang luas terlalu sempit. Inilah sisi lain dari persoalan pada Bagian C5.
+
+    ## C7. Seberapa yakin model, dan apakah keyakinannya dapat dipercaya?
+
+    Untuk sasaran kategorik, ketidakpastian dinyatakan dengan peluang. Peluang tertinggi yang rendah berarti model ragu di antara beberapa kelas. Entropi meringkas sebaran peluang ke semua kelas: 0 berarti model yakin penuh pada satu kelas, sedangkan 1 berarti semua kelas sama mungkin. Peluang itu baru berguna bila jujur, yaitu bila titik yang diprediksi dengan peluang tinggi memang lebih sering benar. Sel berikut memeriksanya dengan prediksi validasi blok spasial.
+    """),
+    kode("""
+    p_t, peluang_t, model_t = hasil_terpilih['Blok spasial']
+    benar = p_t == y
+    kelompok = pd.cut(peluang_t.max(axis=1), [0, .3, .5, .7, 1.0], include_lowest=True)
+    keyakinan = pd.DataFrame({'Peluang tertinggi': kelompok, 'Benar': benar}).groupby('Peluang tertinggi', observed=False)['Benar']
+    display(keyakinan.agg(['count', 'mean']).rename(columns={'count': 'Jumlah titik', 'mean': 'Proporsi benar'}).round(2))
+
+    fig, ax = plt.subplots(1, 2, figsize=(7.4, 5))
+    a = ax[0].imshow(ke_peta(peluang_maks), cmap='viridis', vmin=0, vmax=1); ax[0].set_title('Peluang kelas tertinggi'); plt.colorbar(a, ax=ax[0], shrink=.7)
+    b = ax[1].imshow(ke_peta(entropi), cmap='magma_r', vmin=0, vmax=1); ax[1].set_title('Entropi (0 yakin, 1 ragu)'); plt.colorbar(b, ax=ax[1], shrink=.7)
     for x in ax: x.axis('off')
-    plt.tight_layout(); plt.savefig('hasil/peta_prediksi_dan_pi90.png', dpi=150); plt.show()
-    print(f'Rentang pengamatan {y.min():.2f}-{y.max():.2f} | rentang prediksi median {np.nanmin(peta_median):.2f}-{np.nanmax(peta_median):.2f} | PI90 rata-rata {np.nanmean(peta_pi90):.2f}')
+    plt.tight_layout(); plt.savefig('hasil/peta_peluang_entropi.png', dpi=150); plt.show()
+    print(f'Rata-rata peluang tertinggi {peluang_maks.mean():.2f} | piksel dengan peluang >= 0,7: {100 * (peluang_maks >= .7).mean():.1f}%')
     """),
     md("""
-    Bandingkan rentang prediksi dengan rentang pengamatan yang dicetak di atas. *Random forest* merata-ratakan banyak pohon, sehingga petanya cenderung lebih sempit dan lebih halus daripada keragaman tanah yang sebenarnya.
+    ## C8. Wilayah keberlakuan model
 
-    ## C6. Menilai interval prediksi dengan PICP
-
-    Jika interval 90% itu jujur, sekitar 90% titik uji seharusnya berada di dalamnya.
+    Indeks ketidakmiripan (DI) mengukur jarak setiap piksel ke titik latih terdekat dalam ruang kovariat. Mengikuti Meyer dan Pebesma (2021), setiap kovariat diberi bobot sesuai kepentingannya dari Bagian C4, sehingga kovariat yang tidak berpengaruh tidak ikut menentukan. Di sini hanya kovariat numerik yang dipakai. Ambangnya diturunkan dari DI titik latih terhadap titik di lipatan blok lain. Ini penerapan sederhana untuk peragaan.
     """),
     kode("""
-    def picp(iris):
-        masuk = np.zeros(len(y), bool)
-        for latih, uji in iris:
-            m = RandomForestQuantileRegressor(n_estimators=300, min_samples_leaf=3, max_features=.5, random_state=0, n_jobs=-1).fit(X.iloc[latih], y[latih])
-            qq = m.predict(X.iloc[uji], quantiles=[.05, .95])
-            masuk[uji] = (y[uji] >= qq[:, 0]) & (y[uji] <= qq[:, 1])
-        return masuk.mean()
-
-    print(f'PICP validasi acak   : {picp(iris_acak):.2f}')
-    print(f'PICP validasi spasial: {picp(iris_spasial):.2f}')
-    """),
-    md("""
-    ## C7. Wilayah keberlakuan model
-
-    Indeks ketidakmiripan (DI) mengukur jarak setiap piksel ke titik latih terdekat dalam ruang kovariat. Meyer dan Pebesma (2021) membobot jarak ini dengan tingkat kepentingan kovariat. Karena tingkat kepentingan pada Bagian C4 tidak dapat dipercaya, di sini semua kovariat numerik diberi bobot sama. Ambangnya diturunkan dari DI titik latih saat titik-titik dari blok yang sama disisihkan. Ini penerapan sederhana untuk peragaan.
-    """),
-    kode("""
-    skala = StandardScaler().fit(X[terpilih])
-    Zt, Zp = skala.transform(X[terpilih]), skala.transform(X_piksel[terpilih])
-    jarak_latih = NearestNeighbors(n_neighbors=len(Zt)).fit(Zt).kneighbors(Zt)[0][:, 1:]
-    d_rata = jarak_latih.mean()
-    di_titik = np.array([np.linalg.norm(Zt[blok != blok[i]] - Zt[i], axis=1).min() for i in range(len(Zt))]) / d_rata
+    num_t = [k for k in terpilih if k in numerik]
+    bobot = kepentingan.loc[num_t, 'Permutasi'].clip(lower=0).values
+    skala = StandardScaler().fit(tabel[num_t])
+    Zt, Zp = skala.transform(tabel[num_t]) * bobot, skala.transform(piksel[num_t]) * bobot
+    d_rata = NearestNeighbors(n_neighbors=len(Zt)).fit(Zt).kneighbors(Zt)[0][:, 1:].mean()
+    lipatan = np.zeros(len(y), int)
+    for i, (_, uji) in enumerate(iris['Blok spasial']):
+        lipatan[uji] = i
+    di_titik = np.array([np.linalg.norm(Zt[lipatan != lipatan[i]] - Zt[i], axis=1).min() for i in range(len(Zt))]) / d_rata
     ambang = np.percentile(di_titik, 75) + 1.5 * (np.percentile(di_titik, 75) - np.percentile(di_titik, 25))
     di_piksel = NearestNeighbors(n_neighbors=1).fit(Zt).kneighbors(Zp)[0].ravel() / d_rata
     aoa = (di_piksel <= ambang).astype('float32')
-    simpan(ke_peta(di_piksel), f'di_{SASARAN}')
-    simpan(ke_peta(aoa), f'aoa_{SASARAN}')
+    simpan(ke_peta(di_piksel), 'di_material')
+    simpan(ke_peta(aoa), 'aoa_material')
     print(f'Ambang DI {ambang:.2f} | {100 * aoa.mean():.1f}% piksel berada di dalam wilayah keberlakuan')
     plt.figure(figsize=(3.8, 5)); plt.imshow(ke_peta(aoa), cmap='RdYlGn', vmin=0, vmax=1); plt.axis('off'); plt.title('Hijau: di dalam AOA')
     plt.tight_layout(); plt.savefig('hasil/aoa.png', dpi=150); plt.show()
     """),
     md("""
-    ## C8. Melihat residual
+    ## C9. Di mana model salah?
 
-    Residual yang masih berkelompok menandakan ada proses yang belum tertangkap kovariat. Moran's I dihitung dari residual validasi spasial dengan bobot kebalikan jarak. Nilai mendekati 0 berarti residual tidak berpola.
+    Peta kesesuaian membandingkan peta prediksi dengan peta acuan piksel demi piksel. Titik menunjukkan hasil validasi blok spasial, yaitu benar atau salahnya tebakan saat blok titik itu disisihkan. Perhatikan apakah kesalahan mengumpul di kelas tertentu, di dekat batas kelas, atau di bagian wilayah tertentu.
     """),
     kode("""
-    res = y - validasi('Random forest', X, y, iris_spasial)
-    xy = sampel[['x', 'y']].values
-    D = np.hypot(*(xy[:, None, :] - xy[None, :, :]).transpose(2, 0, 1))
-    W = np.where(D > 0, 1 / np.where(D == 0, 1, D), 0)
-    z = res - res.mean()
-    moran = len(z) / W.sum() * (W * np.outer(z, z)).sum() / (z ** 2).sum()
-    fig, ax = plt.subplots(figsize=(3.8, 5))
-    batas = np.abs(res).max()
-    g = ax.scatter(xy[:, 0], xy[:, 1], c=res, cmap='RdBu', vmin=-batas, vmax=batas, s=36, edgecolor='k', lw=.3)
-    plt.colorbar(g, label='Residual (%)'); ax.set_title(f"Residual, Moran's I = {moran:.2f}"); ax.axis('off')
-    plt.tight_layout(); plt.savefig('hasil/residual.png', dpi=150); plt.show()
-    pd.DataFrame({'Titik': sampel['Titik'], 'x': sampel.x, 'y': sampel.y, 'residual': res.round(2)}).to_csv(f'hasil/residual_{SASARAN}.csv', index=False)
+    kesesuaian = ke_peta(np.where(sama, 1, 2))
+    simpan(kesesuaian, 'kesesuaian_material', kelas=True)
+    fig, ax = plt.subplots(figsize=(4.6, 6.4))
+    ax.imshow(kesesuaian, extent=luasan, cmap=ListedColormap(['#a6d96a', '#fdae61']), vmin=.5, vmax=2.5, interpolation='nearest')
+    ax.scatter(titik.x[benar], titik.y[benar], s=10, c='#1a9850', edgecolor='k', lw=.3, label='Titik benar (validasi spasial)')
+    ax.scatter(titik.x[~benar], titik.y[~benar], s=14, c='#d73027', marker='x', lw=1, label='Titik salah')
+    fig.legend(handles=[Patch(color='#a6d96a', label='Prediksi = acuan'), Patch(color='#fdae61', label='Prediksi berbeda')] + ax.get_legend_handles_labels()[0], fontsize=7, loc='lower center', ncol=2)
+    ax.axis('off'); ax.set_title('Kesesuaian prediksi dengan peta acuan')
+    plt.tight_layout(rect=(0, .08, 1, 1)); plt.savefig('hasil/kesesuaian_dan_kesalahan.png', dpi=150); plt.show()
+    pd.DataFrame({'Material': KELAS, 'Titik salah (validasi spasial)': pd.Series(y[~benar]).value_counts().reindex(KELAS.index, fill_value=0)})
     """),
     md("""
     ## Yang dibawa ke QGIS dan ke presentasi
 
-    Folder `hasil/` kini berisi peta prediksi, PI90, DI, AOA, tabel metrik, dan gambar. Buka GeoTIFF-nya di QGIS (Modul Praktik 5, tahap terakhir), tumpangkan dengan peta SMU dari Praktik 2, lalu siapkan jawaban untuk tiga pertanyaan berikut:
+    Folder `hasil/` kini berisi peta kelas (`prediksi_material.tif`), peta peluang dan entropi, DI, AOA, peta kesesuaian, tabel metrik, dan gambar. Buka GeoTIFF-nya di QGIS (Modul Praktik 5, tahap terakhir), tumpangkan dengan peta SMU dari Praktik 2, lalu siapkan jawaban untuk pertanyaan berikut:
 
-    1. Seberapa baik model ini dibandingkan pembanding sederhananya?
-    2. Di mana peta ini paling tidak bisa dipercaya?
-    3. Data apa yang paling mungkin memperbaiki hasilnya: titik sampel tambahan, DEM yang lebih rinci, atau peta bahan induk?
+    1. Seberapa baik CatBoost dibandingkan pembanding sederhananya, dan pada skema validasi yang mana?
+    2. Kelas mana yang paling sering tertukar, dan di mana peta ini paling tidak dapat dipercaya?
+    3. Jika sampel di kebun tidak seimbang, cara penanganan mana yang dipilih, dan apa akibatnya pada luas setiap kelas di peta?
     """),
 ]
 

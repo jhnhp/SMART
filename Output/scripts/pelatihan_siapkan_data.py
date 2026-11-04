@@ -7,7 +7,6 @@ pelatihan_uji_semua.sh saat uji coba.
 
 Jalankan: python3 Output/scripts/pelatihan_siapkan_data.py
 """
-import csv
 import gzip
 import os
 import shutil
@@ -24,6 +23,14 @@ PSS = os.path.join(AKAR, "Source", "Proximal Sensing")
 DATA = os.path.join(AKAR, "Output", "Pelatihan", "data")
 GPKG = os.path.join(BOMPON, "bompon.gpkg")
 BATAS_10M = (396060, 9162990, 397980, 9166610)
+
+
+def jalur_demnas():
+    """DEMNAS lembar 1408-23 (0,27 detik busur, sekitar 8 m), di Source/ atau Source/DEMNAS/."""
+    for jalur in (os.path.join(AKAR, "Source", "DEMNAS_1408-23_v1.0.tif"), os.path.join(AKAR, "Source", "DEMNAS", "DEMNAS_1408-23_v1.0.tif")):
+        if os.path.exists(jalur):
+            return jalur
+    raise FileNotFoundError("DEMNAS_1408-23_v1.0.tif tidak ditemukan di Source/ maupun Source/DEMNAS/")
 
 
 def p(n, *nama):
@@ -52,36 +59,6 @@ def unduh_scl_2024(tujuan):
               dstSRS="EPSG:32749", creationOptions=["COMPRESS=DEFLATE"])
 
 
-def sampel_bersih(tujuan):
-    """Merapikan header sampel.csv dan menandai nilai 0 yang tidak masuk akal sebagai kosong.
-
-    Kolom ke-20 berheader ganda 'C_Organik_1' diberi nama C_Organik_2 (urutannya diapit
-    Bahan_Organik_1 dan Bahan_Organik_2). KPK dan berat volume bernilai 0 dikosongkan karena
-    tidak mungkin secara fisik; asal nilai ini perlu dikonfirmasi ke pemilik data.
-    """
-    with open(os.path.join(BOMPON, "sampel.csv"), encoding="utf-8-sig") as f:
-        baris = list(csv.reader(f))
-    kepala = baris[0]
-    kepala[19] = "C_Organik_2"
-    kepala[kepala.index("Kdar_Lengas_1")] = "Kadar_Lengas_1"
-    kepala[kepala.index("KPK1")] = "KPK_1"
-    kepala[kepala.index("KPK2")] = "KPK_2"
-    kosongkan = [i for i, k in enumerate(kepala) if k.startswith(("KPK", "Berat_Volume"))]
-    with open(tujuan, "w", newline="", encoding="utf-8") as f:
-        w = csv.writer(f)
-        w.writerow(kepala)
-        for r in baris[1:]:
-            for i in kosongkan:
-                if float(r[i]) == 0:
-                    r[i] = ""
-            # Titik 49: C-organik tidak konsisten dengan bahan organiknya, diduga salah ukur.
-            # Untuk latihan, nilainya dihitung ulang dari bahan organik dengan faktor 1,724.
-            if r[0] == "49":
-                for c, bo in (("C_Organik_1", "Bahan_Organik_1"), ("C_Organik_2", "Bahan_Organik_2")):
-                    r[kepala.index(c)] = f"{float(r[kepala.index(bo)]) / 1.724:.2f}"
-            w.writerow(r)
-
-
 def spektra(tujuan_spektra):
     """Pustaka spektral sampel tanah Site Gunung Madu Plantation, disalin apa adanya dalam bentuk terkompresi."""
     with open(os.path.join(PSS, "data spectro geo.csv"), "rb") as masuk, gzip.open(tujuan_spektra, "wb") as keluar:
@@ -94,7 +71,7 @@ def praktik_1_lidar_demnas():
     import glob
     import tempfile
     gdal.UseExceptions()
-    salin(os.path.join(AKAR, "Source", "DEMNAS", "DEMNAS_1408-23_v1.0.tif"), p(1, "DEMNAS_1408-23_v1.0.tif"))
+    salin(jalur_demnas(), p(1, "DEMNAS_1408-23_v1.0.tif"))
     L = os.path.join(AKAR, "Source", "Lidar")
     salin(glob.glob(os.path.join(L, "Lidar-*", "Lidar", "LiDAR_Kalijambe_Bompon_20222023.tif"))[0], p(1, "LiDAR_Kalijambe_Bompon_20222023.tif"))
     for berkas in glob.glob(os.path.join(BOMPON, "mentah", "SHP Bompon", "Batas_Bompon.*")):
@@ -118,6 +95,19 @@ def praktik_1_lidar_demnas():
             pita.WriteArray(a.clip(0, 255).astype("uint8"))
             pita.SetNoDataValue(0)
         keluar = None
+
+
+def praktik_5_demnas():
+    """DEMNAS untuk kovariat medan Praktik 5: diproyeksikan ke UTM 49S pada piksel 8 m dan dipotong ke grid 10 m
+    ditambah penyangga 500 m, agar TPI, TRI, dan TWI di tepi Sub-DAS tidak terpotong. Berkas asal tidak memiliki
+    CRS, sehingga EPSG:4326 ditetapkan seperti pada Praktik 1."""
+    from osgeo import gdal
+    gdal.UseExceptions()
+    b = 500
+    gdal.Warp(p(5, "demnas_8m.tif"), jalur_demnas(), srcSRS="EPSG:4326", dstSRS="EPSG:32749",
+              outputBounds=(BATAS_10M[0] - b, BATAS_10M[1] - b, BATAS_10M[2] + b, BATAS_10M[3] + b),
+              xRes=8, yRes=8, targetAlignedPixels=True, resampleAlg="bilinear", outputType=gdal.GDT_Float32,
+              dstNodata=-9999, creationOptions=["COMPRESS=DEFLATE"])
 
 
 def main():
@@ -147,9 +137,10 @@ def main():
     unduh_scl_2024(p(4, "sentinel2_l2a_20240813_scl_10m.tif"))
     layer_vektor(p(4, "bompon_vektor.gpkg"), "batas_subdas", "penggunaan_lahan", "jalan")
 
-    # Praktik 5: sampel laboratorium dan data dasar kovariat
-    sampel_bersih(p(5, "sampel_tanah_bompon.csv"))
-    salin(os.path.join(TERBUKA, "copdem_glo30_30m.tif"), p(5, "copdem_glo30_30m.tif"))
+    # Praktik 5: data dasar kovariat. Atribut medan memakai DEMNAS 8 m. Titik latih/uji tutupan material dan
+    # peta acuan 10 m dibuat terpisah oleh pelatihan_titik_tutupan_material.py (memerlukan rasterio, geopandas,
+    # scikit-learn).
+    praktik_5_demnas()
     layer_vektor(p(5, "bompon_vektor.gpkg"), "batas_subdas", "bentuklahan", "penggunaan_lahan", "sungai")
 
     print("Selesai.")

@@ -1,20 +1,203 @@
 {
- "rerata_per_bentuklahan_peserta": {
-  "Kaki lereng dan dataran koluvial": {
-   "luas_ha": 22.3,
-   "prediksi": 1.1,
-   "pi90": 1.0
+ "twi": {
+  "min": 3.57,
+  "rerata": 5.89,
+  "maks": 15.47
+ },
+ "kovariat": {
+  "arah_utara": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": -1.0,
+   "rerata": -0.096,
+   "maks": 1.0
   },
-  "Lereng perbukitan": {
-   "luas_ha": 230.8,
-   "prediksi": 1.2,
-   "pi90": 1.3
+  "bi_2024": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.015,
+   "rerata": 0.036,
+   "maks": 0.397
   },
-  "Punggung dan interfluve": {
-   "luas_ha": 41.6,
-   "prediksi": 1.1,
-   "pi90": 1.3
+  "bsi_2024": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": -0.467,
+   "rerata": -0.216,
+   "maks": 0.251
+  },
+  "cmr_2024": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 1.069,
+   "rerata": 2.096,
+   "maks": 2.593
+  },
+  "elevasi": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 349.573,
+   "rerata": 458.617,
+   "maks": 536.044
+  },
+  "jarak_sungai": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.0,
+   "rerata": 360.189,
+   "maks": 1287.983
+  },
+  "kat_bentuklahan": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 1.0,
+   "rerata": 3.097,
+   "maks": 6.0
+  },
+  "kat_penggunaan_lahan": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 1.0,
+   "rerata": 1.647,
+   "maks": 4.0
+  },
+  "lereng": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.051,
+   "rerata": 21.505,
+   "maks": 74.096
+  },
+  "ndvi_2024": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.054,
+   "rerata": 0.778,
+   "maks": 0.922
+  },
+  "ndvi_2025": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.038,
+   "rerata": 0.829,
+   "maks": 0.936
+  },
+  "sar_vh": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": -26.3,
+   "rerata": -13.485,
+   "maks": -1.656
+  },
+  "sar_vv": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": -23.315,
+   "rerata": -7.041,
+   "maks": 7.08
+  },
+  "tpi": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": -0.887,
+   "rerata": 0.001,
+   "maks": 0.683
+  },
+  "tri": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 0.206,
+   "rerata": 4.358,
+   "maks": 14.248
+  },
+  "twi": {
+   "kolom": 192,
+   "baris": 362,
+   "piksel": 10.0,
+   "min": 3.567,
+   "rerata": 5.894,
+   "maks": 15.472
   }
  },
- "status": "selesai"
+ "jumlah_titik_di_dalam_batas": 210,
+ "titik_per_kelas": {
+  "1": {
+   "latih": 21,
+   "uji": 9
+  },
+  "2": {
+   "latih": 21,
+   "uji": 9
+  },
+  "3": {
+   "latih": 21,
+   "uji": 9
+  },
+  "4": {
+   "latih": 21,
+   "uji": 9
+  },
+  "5": {
+   "latih": 21,
+   "uji": 9
+  },
+  "6": {
+   "latih": 21,
+   "uji": 9
+  },
+  "7": {
+   "latih": 21,
+   "uji": 9
+  }
+ },
+ "status": "selesai",
+ "komposisi_material_per_bentuklahan_smu": {
+  "Kaki lereng dan dataran koluvial": {
+   "kelas_1": 6.9,
+   "kelas_2": 0.5,
+   "kelas_3": 8.1,
+   "kelas_4": 4.9,
+   "kelas_5": 0.2,
+   "kelas_6": 79.0,
+   "kelas_7": 0.5
+  },
+  "Lereng perbukitan": {
+   "kelas_1": 12.4,
+   "kelas_2": 14.8,
+   "kelas_3": 20.8,
+   "kelas_4": 15.7,
+   "kelas_5": 14.5,
+   "kelas_6": 10.6,
+   "kelas_7": 11.2
+  },
+  "Punggung dan interfluve": {
+   "kelas_1": 0.0,
+   "kelas_2": 12.1,
+   "kelas_3": 12.7,
+   "kelas_4": 10.9,
+   "kelas_5": 26.0,
+   "kelas_6": 0.0,
+   "kelas_7": 38.4
+  }
+ },
+ "luas_ha_per_bentuklahan_smu": {
+  "Kaki lereng dan dataran koluvial": 22.5,
+  "Lereng perbukitan": 230.7,
+  "Punggung dan interfluve": 41.5
+ }
 }

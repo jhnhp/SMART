@@ -5,6 +5,7 @@ scipy
 scikit-learn
 matplotlib
 rasterio
-quantile-forest
+catboost
+imbalanced-learn
 notebook
 jupyterlab

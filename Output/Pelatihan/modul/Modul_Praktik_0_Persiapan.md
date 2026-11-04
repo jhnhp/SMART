@@ -52,7 +52,7 @@ pip install -r requirements.txt
 5. **Periksa hasilnya.** Jalankan perintah berikut. Keluarannya harus berbunyi `Siap dipakai`.
 
 ```
-python -c "import rasterio, sklearn, quantile_forest; print('Siap dipakai')"
+python -c "import rasterio, sklearn, catboost, imblearn; print('Siap dipakai')"
 ```
 
 6. **Buka Jupyter.** Ketik `jupyter lab`, atau `jupyter notebook` jika ingin tampilan yang lebih sederhana. Browser akan terbuka dan menampilkan isi folder. Masuk ke `data/`, lalu klik dua kali berkas `.ipynb`. Biarkan terminal tetap terbuka selama bekerja, dan tekan **Ctrl + C** pada terminal itu untuk menutup Jupyter.
@@ -85,7 +85,7 @@ Pelatihan/
 │   ├── praktik-2/         citra, DEM 10 m, dan peta riset pembanding
 │   ├── praktik-3/         pustaka spektral dan notebook
 │   ├── praktik-4/         citra dua tanggal
-│   └── praktik-5/         sampel tanah, kovariat, dan notebook
+│   └── praktik-5/         titik tutupan material, kovariat, dan notebook
 └── screenshots/           tangkapan layar hasil uji coba
 ```
 

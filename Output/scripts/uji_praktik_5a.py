@@ -1,4 +1,4 @@
-"""Uji coba Praktik 5 bagian QGIS: penyiapan kovariat SCORPAN dan titik sampel."""
+"""Uji coba Praktik 5 bagian QGIS: penyiapan kovariat SCORPAN dan titik latih/uji tutupan material."""
 import os
 import shutil
 import sys
@@ -7,16 +7,20 @@ sys.path.insert(0, os.path.join(os.environ['AKAR_PROYEK'], 'Output', 'scripts'))
 from uji_qgis_umum import *  # noqa
 
 
+def hasil_praktik(n):
+    """Folder keluaran praktik n: hasil/ pada uji penuh, hasil-contoh/ bila bagian ini diuji sendiri."""
+    folder = os.path.join(PELATIHAN, 'data', f'praktik-{n}', 'hasil')
+    return folder if os.path.isdir(folder) else folder + '-contoh'
+
+
 def uji():
     u = Uji(5)
     kov = u.d('kovariat')
     if os.path.isdir(kov):
         shutil.rmtree(kov)
     os.makedirs(kov)
-    h1 = os.path.join(PELATIHAN, 'data', 'praktik-1', 'hasil')
-    h4 = os.path.join(PELATIHAN, 'data', 'praktik-4', 'hasil')
-    # elevasi tetap dari Copernicus DEM 10 m pada folder Praktik 2, karena Praktik 1 kini memakai DEMNAS dan LiDAR
-    shutil.copy2(os.path.join(PELATIHAN, 'data', 'praktik-2', 'dem_10m.tif'), os.path.join(kov, 'elevasi.tif'))
+    # indeks optik dan radar dari keluaran Praktik 1 dan Praktik 4 (hasil/ saat uji penuh, hasil-contoh/ bila diuji sendiri)
+    h1, h4 = hasil_praktik(1), hasil_praktik(4)
     for n, t in (('s1_vv_db.tif', 'sar_vv.tif'), ('s1_vh_db.tif', 'sar_vh.tif')):
         shutil.copy2(os.path.join(h1, n), os.path.join(kov, t))
     for n, t in (('ndvi_20250721.tif', 'ndvi_2025.tif'), ('ndvi_20240813.tif', 'ndvi_2024.tif'), ('bsi_20240813.tif', 'bsi_2024.tif'), ('cmr_20240813.tif', 'cmr_2024.tif'), ('bi_20240813.tif', 'bi_2024.tif')):
@@ -24,9 +28,8 @@ def uji():
     u.siapkan_jendela()
     proj = QgsProject.instance()
     gp = u.d('bompon_vektor.gpkg')
-    dem = u.raster(os.path.join(kov, 'elevasi.tif'), 'elevasi')
-    dem30 = u.raster(u.d('copdem_glo30_30m.tif'), tampil=False)
-    u.semu(dem, 'Spectral', balik=True)
+    dem8 = u.raster(u.d('demnas_8m.tif'), 'demnas_8m')
+    u.semu(dem8, 'Spectral', balik=True)
     sungai = u.vektor(gp, 'sungai')
     u.garis(sungai, '#00e5ff', '0.5')
     batas = u.vektor(gp, 'batas_subdas')
@@ -34,21 +37,30 @@ def uji():
     u.zoom(batas, 1.1)
     grid = '396060,397980,9162990,9166610 [EPSG:32749]'
 
-    def ke_10m(masukan, keluaran):
-        return processing.run('gdal:warpreproject', {'INPUT': masukan, 'SOURCE_CRS': None, 'TARGET_CRS': 'EPSG:32749', 'RESAMPLING': 1, 'NODATA': None, 'TARGET_RESOLUTION': 10, 'OPTIONS': '', 'DATA_TYPE': 6, 'TARGET_EXTENT': grid, 'TARGET_EXTENT_CRS': 'EPSG:32749', 'MULTITHREADING': False, 'EXTRA': '', 'OUTPUT': keluaran})['OUTPUT']
+    def parameter_10m(masukan, keluaran):
+        return {'INPUT': masukan, 'SOURCE_CRS': None, 'TARGET_CRS': 'EPSG:32749', 'RESAMPLING': 1, 'NODATA': None, 'TARGET_RESOLUTION': 10, 'OPTIONS': '', 'DATA_TYPE': 6, 'TARGET_EXTENT': grid, 'TARGET_EXTENT_CRS': 'EPSG:32749', 'MULTITHREADING': False, 'EXTRA': '', 'OUTPUT': keluaran}
 
-    # relief
+    def ke_10m(masukan, keluaran):
+        return processing.run('gdal:warpreproject', parameter_10m(masukan, keluaran))['OUTPUT']
+
+    # elevasi: DEMNAS 8 m diselaraskan ke grid 10 m dengan bilinear, seperti Praktik 1 tahap 2
+    u.dialog('gdal:warpreproject', parameter_10m(dem8, os.path.join(kov, 'elevasi.tif')), 'dialog_warp_elevasi', ukuran=(800, 720))
+    dem = u.raster(os.path.join(kov, 'elevasi.tif'), 'elevasi')
+    u.semu(dem, 'Spectral', balik=True)
+
+    # relief: lereng dan arah hadap dari elevasi 10 m; TPI, TRI, dan TWI dari DEMNAS 8 m lalu diselaraskan ke 10 m
     processing.run('gdal:slope', {'INPUT': dem, 'BAND': 1, 'SCALE': 1, 'AS_PERCENT': True, 'COMPUTE_EDGES': True, 'ZEVENBERGEN': False, 'OPTIONS': '', 'EXTRA': '', 'OUTPUT': os.path.join(kov, 'lereng.tif')})
     r = processing.run('gdal:aspect', {'INPUT': dem, 'BAND': 1, 'TRIG_ANGLE': False, 'ZERO_FLAT': True, 'COMPUTE_EDGES': True, 'ZEVENBERGEN': False, 'OPTIONS': '', 'EXTRA': '', 'OUTPUT': u.h('aspek_derajat.tif')})
     asp = u.raster(r['OUTPUT'], 'aspek_derajat', tampil=False)
     u.kalkulator(f'cos("aspek_derajat@1" * 3.14159265 / 180)', os.path.join(kov, 'arah_utara.tif'), asp, foto='kalkulator_arah_utara')
-    r = u.dialog('gdal:tpitopographicpositionindex', {'INPUT': dem30, 'BAND': 1, 'COMPUTE_EDGES': True, 'OPTIONS': '', 'OUTPUT': u.h('tpi_30m.tif')}, 'dialog_tpi', ukuran=(760, 500))
+    r = u.dialog('gdal:tpitopographicpositionindex', {'INPUT': dem8, 'BAND': 1, 'COMPUTE_EDGES': True, 'OPTIONS': '', 'OUTPUT': u.h('tpi_8m.tif')}, 'dialog_tpi', ukuran=(760, 500))
     ke_10m(r['OUTPUT'], os.path.join(kov, 'tpi.tif'))
-    r = processing.run('gdal:triterrainruggednessindex', {'INPUT': dem30, 'BAND': 1, 'COMPUTE_EDGES': True, 'OPTIONS': '', 'OUTPUT': u.h('tri_30m.tif')})
+    r = processing.run('gdal:triterrainruggednessindex', {'INPUT': dem8, 'BAND': 1, 'COMPUTE_EDGES': True, 'OPTIONS': '', 'OUTPUT': u.h('tri_8m.tif')})
     ke_10m(r['OUTPUT'], os.path.join(kov, 'tri.tif'))
-    # TWI dari GRASS bila tersedia
+    # TWI dari GRASS bila tersedia; penyedia GRASS bernama grass7 pada QGIS 3.34 dan grass pada versi sesudahnya
     try:
-        r = u.dialog('grass:r.topidx', {'input': dem30, 'output': u.h('twi_30m.tif'), 'GRASS_REGION_PARAMETER': None, 'GRASS_REGION_CELLSIZE_PARAMETER': 0, 'GRASS_RASTER_FORMAT_OPT': '', 'GRASS_RASTER_FORMAT_META': ''}, 'dialog_twi_grass', ukuran=(760, 560))
+        alg_twi = next(a for a in ('grass:r.topidx', 'grass7:r.topidx') if QgsApplication.processingRegistry().algorithmById(a))
+        r = u.dialog(alg_twi, {'input': dem8, 'output': u.h('twi_8m.tif'), 'GRASS_REGION_PARAMETER': None, 'GRASS_REGION_CELLSIZE_PARAMETER': 0, 'GRASS_RASTER_FORMAT_OPT': '', 'GRASS_RASTER_FORMAT_META': ''}, 'dialog_twi_grass', ukuran=(760, 560))
         ke_10m(r['output'], os.path.join(kov, 'twi.tif'))
         twi_lyr = QgsRasterLayer(os.path.join(kov, 'twi.tif'), 'twi')
         s = twi_lyr.dataProvider().bandStatistics(1)
@@ -83,24 +95,34 @@ def uji():
             laporan[f[:-4]] = dict(kolom=l.width(), baris=l.height(), piksel=l.rasterUnitsPerPixelX(), min=round(s.minimumValue, 3), rerata=round(s.mean, 3), maks=round(s.maximumValue, 3))
     u.catat('kovariat', laporan)
 
-    # titik sampel dari CSV
-    r = u.dialog('native:createpointslayerfromtable', {'INPUT': u.d('sampel_tanah_bompon.csv'), 'XFIELD': 'x', 'YFIELD': 'y', 'ZFIELD': None, 'MFIELD': None, 'TARGET_CRS': 'EPSG:32749', 'OUTPUT': u.h('titik_sampel.gpkg')}, 'dialog_titik_dari_tabel', ukuran=(760, 560))
-    tt = u.vektor(r['OUTPUT'], nama='titik_sampel')
-    u.titik(tt, '#e31a1c', '2.6')
-    lrg = u.raster(os.path.join(kov, 'lereng.tif'), 'lereng')
-    u.semu(lrg, 'RdYlGn', mn=0, mx=45, balik=True)
-    u.urut(tt, batas, sungai, lrg, dem)
-    u.hanya(tt, batas, sungai, lrg)
-    u.foto_jendela('titik_sampel_di_atas_lereng')
-    r = u.dialog('native:rastersampling', {'INPUT': tt, 'RASTERCOPY': lrg, 'COLUMN_PREFIX': 'lereng_', 'OUTPUT': u.h('titik_sampel_lereng.gpkg')}, 'dialog_sample_raster', ukuran=(760, 520))
-    tl = u.vektor(r['OUTPUT'], nama='titik_sampel_lereng')
+    bagian_titik(u, batas, dem)
+    u.selesai()
+
+
+def bagian_titik(u, batas, elv):
+    """Tahap 3: titik latih/uji tutupan material di atas peta acuan, lalu Sample Raster Values."""
+    acuan = u.raster(u.d('material_acuan_10m.tif'), 'material_acuan_10m')
+    u.palet(acuan, PALET_MATERIAL)
+    tt = u.vektor(u.d('titik_tutupan_material.gpkg'), 'titik_tutupan_material', nama='titik_tutupan_material')
+    u.kategori_titik(tt, 'subset', {'latih': '#111111', 'uji': '#ffffff'}, ukuran='2.2')
+    u.urut(tt, batas, acuan)
+    u.zoom(batas, 1.1)
+    u.hanya(tt, batas, acuan)
+    u.foto_jendela('titik_material_di_atas_peta_acuan')
+    r = u.dialog('native:rastersampling', {'INPUT': tt, 'RASTERCOPY': elv, 'COLUMN_PREFIX': 'elevasi_', 'OUTPUT': u.h('titik_material_elevasi.gpkg')}, 'dialog_sample_raster', ukuran=(760, 520))
+    tl = u.vektor(r['OUTPUT'], nama='titik_material_elevasi')
     iface.setActiveLayer(tl)
     meja = iface.showAttributeTable(tl)
+    meja.setMinimumSize(1300, 560)  # di Windows resize saja tidak cukup
     meja.resize(1300, 560)
     u.foto_widget(meja, 'tabel_atribut_titik')
     meja.close()
-    u.catat('jumlah_titik_di_dalam_batas', sum(1 for ft in tt.getFeatures() if next(batas.getFeatures()).geometry().contains(ft.geometry())))
-    u.selesai()
+    geom = next(batas.getFeatures()).geometry()
+    u.catat('jumlah_titik_di_dalam_batas', sum(1 for ft in tt.getFeatures() if geom.contains(ft.geometry())))
+    jumlah = {}
+    for ft in tt.getFeatures():
+        jumlah.setdefault(str(ft['kode']), {'latih': 0, 'uji': 0})[ft['subset']] += 1
+    u.catat('titik_per_kelas', jumlah)
 
 
 jalankan(uji)

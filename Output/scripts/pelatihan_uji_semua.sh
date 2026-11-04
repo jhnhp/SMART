@@ -4,6 +4,7 @@
 #
 # Jalankan dari salinan proyek di folder bernama netral agar screenshot tidak memuat nama folder pribadi.
 # Pemakaian: bash Output/scripts/pelatihan_uji_semua.sh <python_dengan_pustaka_notebook> <folder_profil_qgis>
+# Python pertama juga memerlukan geopandas untuk pelatihan_titik_tutupan_material.py.
 set -e
 PY=$1; PROFIL=$2
 export AKAR_PROYEK="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -14,6 +15,7 @@ qg() { QT_QPA_PLATFORM=offscreen timeout 600 qgis --nologo --noversioncheck --pr
 # tangkapan layar portal (W*) pada praktik-0 diambil manual dari browser dan tidak dihapus
 rm -rf ../Pelatihan/screenshots/praktik-{1,2,3,4,5} $DATA/praktik-{0,1,2,3,4,5}/hasil-contoh $DATA/praktik-{0,1,2,3,4,5}/hasil
 python3 pelatihan_siapkan_data.py
+"$PY" pelatihan_titik_tutupan_material.py   # titik latih/uji dan peta acuan tutupan material Praktik 5
 qg 1; qg 2; qg 4; qg 5a
 "$PY" pelatihan_buat_notebook.py
 "$PY" pelatihan_buat_notebook_0_1.py

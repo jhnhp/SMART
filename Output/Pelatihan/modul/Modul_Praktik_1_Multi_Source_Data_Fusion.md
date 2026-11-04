@@ -444,7 +444,7 @@ Citra hasil penajaman tetap berguna, tetapi untuk tujuan yang tepat. Pakailah un
 
 Keselarasan grid juga tidak berarti data itu setara. Citra optik direkam pada Juli 2025, radar pada Agustus 2024, LiDAR dan foto udara pada kurun 2022–2024, dan DEMNAS merupakan gabungan beberapa sumber. Sebelum memakai data berlapis di kebun, tanyakan selalu kapan setiap lapisan direkam dan apa yang diukurnya. Di kebun kelapa sawit, tanyakan pula pada vendor foto udara atau LiDAR: apakah ketinggiannya sudah diperiksa terhadap titik kontrol? Kemiringan seperti pada tahap 4 tidak tampak pada peta bayangan medan yang indah.
 
-Praktik 2 dan Praktik 5 memakai Copernicus DEM yang sudah disiapkan pada folder masing-masing, sehingga hasil di atas belum memengaruhi keduanya.
+Praktik 2 memakai Copernicus DEM yang sudah disiapkan pada foldernya, sehingga hasil di atas belum memengaruhinya. Praktik 5 memakai DEMNAS yang sama dengan praktik ini, yang sudah diproyeksikan ke UTM dan dipotong, lalu dibawa ke grid 10 m dengan pengaturan seperti tahap 2.
 
 ## Jika Tertinggal
 

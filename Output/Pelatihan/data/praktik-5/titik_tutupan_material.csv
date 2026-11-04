@@ -1,0 +1,211 @@
+id,kode,material,subset,x,y,jarak_tepi_m
+M1-01,1,Breksi andesit sisipan diorit,uji,397225.0,9164465.0,39.4
+M1-02,1,Breksi andesit sisipan diorit,latih,397305.0,9164735.0,28.2
+M1-03,1,Breksi andesit sisipan diorit,latih,397085.0,9164395.0,39.0
+M1-04,1,Breksi andesit sisipan diorit,uji,397125.0,9164585.0,46.5
+M1-05,1,Breksi andesit sisipan diorit,uji,397265.0,9164625.0,40.2
+M1-06,1,Breksi andesit sisipan diorit,uji,397175.0,9164385.0,35.0
+M1-07,1,Breksi andesit sisipan diorit,latih,397135.0,9164295.0,33.6
+M1-08,1,Breksi andesit sisipan diorit,uji,397405.0,9164955.0,15.1
+M1-09,1,Breksi andesit sisipan diorit,uji,397105.0,9164495.0,39.5
+M1-10,1,Breksi andesit sisipan diorit,latih,397195.0,9164575.0,76.5
+M1-11,1,Breksi andesit sisipan diorit,latih,397155.0,9164335.0,37.2
+M1-12,1,Breksi andesit sisipan diorit,latih,397215.0,9164615.0,76.4
+M1-13,1,Breksi andesit sisipan diorit,latih,397245.0,9164575.0,34.7
+M1-14,1,Breksi andesit sisipan diorit,latih,397135.0,9164415.0,79.7
+M1-15,1,Breksi andesit sisipan diorit,latih,397215.0,9164525.0,39.1
+M1-16,1,Breksi andesit sisipan diorit,latih,397285.0,9164685.0,42.0
+M1-17,1,Breksi andesit sisipan diorit,latih,397315.0,9164805.0,21.5
+M1-18,1,Breksi andesit sisipan diorit,latih,397165.0,9164615.0,42.4
+M1-19,1,Breksi andesit sisipan diorit,latih,397105.0,9164535.0,44.7
+M1-20,1,Breksi andesit sisipan diorit,uji,397105.0,9164265.0,35.9
+M1-21,1,Breksi andesit sisipan diorit,latih,397085.0,9164445.0,32.3
+M1-22,1,Breksi andesit sisipan diorit,latih,397185.0,9164485.0,76.8
+M1-23,1,Breksi andesit sisipan diorit,latih,397155.0,9164535.0,91.5
+M1-24,1,Breksi andesit sisipan diorit,uji,397255.0,9164665.0,39.4
+M1-25,1,Breksi andesit sisipan diorit,latih,397205.0,9164655.0,38.4
+M1-26,1,Breksi andesit sisipan diorit,latih,397185.0,9164435.0,48.8
+M1-27,1,Breksi andesit sisipan diorit,uji,397085.0,9164575.0,38.8
+M1-28,1,Breksi andesit sisipan diorit,latih,397095.0,9164325.0,32.1
+M1-29,1,Breksi andesit sisipan diorit,latih,397145.0,9164475.0,82.4
+M1-30,1,Breksi andesit sisipan diorit,latih,397125.0,9164365.0,67.9
+M2-01,2,Breksi andesit teralterasi,latih,396815.0,9164255.0,77.5
+M2-02,2,Breksi andesit teralterasi,latih,396925.0,9165215.0,169.5
+M2-03,2,Breksi andesit teralterasi,latih,397165.0,9163365.0,51.0
+M2-04,2,Breksi andesit teralterasi,latih,396925.0,9163845.0,101.7
+M2-05,2,Breksi andesit teralterasi,latih,396515.0,9164205.0,70.3
+M2-06,2,Breksi andesit teralterasi,latih,396815.0,9165555.0,32.4
+M2-07,2,Breksi andesit teralterasi,uji,396745.0,9163825.0,78.3
+M2-08,2,Breksi andesit teralterasi,latih,396435.0,9164485.0,72.4
+M2-09,2,Breksi andesit teralterasi,latih,397075.0,9163615.0,94.1
+M2-10,2,Breksi andesit teralterasi,uji,396775.0,9165115.0,89.0
+M2-11,2,Breksi andesit teralterasi,latih,396895.0,9163565.0,89.5
+M2-12,2,Breksi andesit teralterasi,latih,397055.0,9165305.0,92.7
+M2-13,2,Breksi andesit teralterasi,latih,396955.0,9164165.0,83.6
+M2-14,2,Breksi andesit teralterasi,uji,396665.0,9164145.0,185.7
+M2-15,2,Breksi andesit teralterasi,latih,396895.0,9165035.0,77.5
+M2-16,2,Breksi andesit teralterasi,latih,396875.0,9165375.0,88.3
+M2-17,2,Breksi andesit teralterasi,latih,396505.0,9164355.0,96.0
+M2-18,2,Breksi andesit teralterasi,uji,396825.0,9163695.0,99.6
+M2-19,2,Breksi andesit teralterasi,uji,396935.0,9164005.0,72.0
+M2-20,2,Breksi andesit teralterasi,latih,397015.0,9163735.0,104.1
+M2-21,2,Breksi andesit teralterasi,latih,397015.0,9165115.0,77.4
+M2-22,2,Breksi andesit teralterasi,uji,397045.0,9163475.0,72.1
+M2-23,2,Breksi andesit teralterasi,uji,396975.0,9165475.0,63.0
+M2-24,2,Breksi andesit teralterasi,uji,396805.0,9164105.0,213.0
+M2-25,2,Breksi andesit teralterasi,latih,396515.0,9164055.0,87.3
+M2-26,2,Breksi andesit teralterasi,latih,396775.0,9165265.0,91.5
+M2-27,2,Breksi andesit teralterasi,latih,397125.0,9165465.0,88.2
+M2-28,2,Breksi andesit teralterasi,uji,396815.0,9163955.0,187.8
+M2-29,2,Breksi andesit teralterasi,latih,396645.0,9164295.0,79.9
+M2-30,2,Breksi andesit teralterasi,latih,396675.0,9163985.0,78.2
+M3-01,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397355.0,9164315.0,59.6
+M3-02,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397315.0,9163685.0,65.3
+M3-03,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397195.0,9164065.0,69.9
+M3-04,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397225.0,9163505.0,66.2
+M3-05,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397645.0,9164415.0,49.1
+M3-06,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397565.0,9164145.0,66.2
+M3-07,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397315.0,9163865.0,99.7
+M3-08,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397295.0,9164135.0,67.0
+M3-09,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397375.0,9163375.0,46.8
+M3-10,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397195.0,9164165.0,49.5
+M3-11,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397175.0,9163775.0,58.2
+M3-12,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397365.0,9164065.0,144.5
+M3-13,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397455.0,9164335.0,76.5
+M3-14,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397305.0,9163575.0,68.8
+M3-15,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397445.0,9164005.0,58.2
+M3-16,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397515.0,9164245.0,130.4
+M3-17,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397485.0,9164095.0,81.4
+M3-18,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397595.0,9164315.0,70.7
+M3-19,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397525.0,9164405.0,61.2
+M3-20,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397205.0,9163895.0,69.3
+M3-21,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397635.0,9164205.0,64.1
+M3-22,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397425.0,9164185.0,52.4
+M3-23,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397255.0,9163765.0,124.2
+M3-24,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397355.0,9163775.0,53.0
+M3-25,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397315.0,9163305.0,51.7
+M3-26,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397355.0,9163495.0,62.2
+M3-27,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",uji,397225.0,9163645.0,57.0
+M3-28,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397265.0,9163985.0,82.0
+M3-29,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397285.0,9163415.0,49.1
+M3-30,3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",latih,397375.0,9163935.0,70.8
+M4-01,4,Breksi vulkanik,latih,396605.0,9164695.0,176.0
+M4-02,4,Breksi vulkanik,latih,396445.0,9164955.0,168.3
+M4-03,4,Breksi vulkanik,uji,396765.0,9164565.0,148.0
+M4-04,4,Breksi vulkanik,uji,396815.0,9164755.0,70.0
+M4-05,4,Breksi vulkanik,latih,396495.0,9165225.0,75.3
+M4-06,4,Breksi vulkanik,latih,396415.0,9164725.0,67.1
+M4-07,4,Breksi vulkanik,uji,396555.0,9164985.0,57.6
+M4-08,4,Breksi vulkanik,latih,396335.0,9164925.0,66.0
+M4-09,4,Breksi vulkanik,latih,396905.0,9164435.0,64.8
+M4-10,4,Breksi vulkanik,uji,396685.0,9164505.0,55.9
+M4-11,4,Breksi vulkanik,latih,396685.0,9164885.0,55.1
+M4-12,4,Breksi vulkanik,latih,396715.0,9164665.0,183.6
+M4-13,4,Breksi vulkanik,latih,396555.0,9165125.0,68.7
+M4-14,4,Breksi vulkanik,latih,396505.0,9164615.0,73.9
+M4-15,4,Breksi vulkanik,latih,396355.0,9165035.0,60.7
+M4-16,4,Breksi vulkanik,latih,396515.0,9164755.0,164.1
+M4-17,4,Breksi vulkanik,latih,396405.0,9165135.0,74.2
+M4-18,4,Breksi vulkanik,latih,396805.0,9164875.0,68.7
+M4-19,4,Breksi vulkanik,latih,396385.0,9164635.0,72.0
+M4-20,4,Breksi vulkanik,uji,396775.0,9164435.0,70.0
+M4-21,4,Breksi vulkanik,latih,396535.0,9164885.0,118.6
+M4-22,4,Breksi vulkanik,latih,396865.0,9164535.0,58.2
+M4-23,4,Breksi vulkanik,latih,396475.0,9165055.0,135.4
+M4-24,4,Breksi vulkanik,latih,396585.0,9165235.0,69.0
+M4-25,4,Breksi vulkanik,latih,396605.0,9164575.0,56.1
+M4-26,4,Breksi vulkanik,latih,396415.0,9164835.0,77.1
+M4-27,4,Breksi vulkanik,uji,396605.0,9164805.0,148.3
+M4-28,4,Breksi vulkanik,uji,396835.0,9164645.0,67.5
+M4-29,4,Breksi vulkanik,uji,396415.0,9165245.0,59.0
+M4-30,4,Breksi vulkanik,uji,396715.0,9164775.0,167.9
+M5-01,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397445.0,9165245.0,86.0
+M5-02,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396815.0,9165675.0,54.2
+M5-03,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397545.0,9164545.0,53.9
+M5-04,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397035.0,9164695.0,70.2
+M5-05,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396625.0,9166125.0,73.5
+M5-06,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397275.0,9165055.0,91.2
+M5-07,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397595.0,9165035.0,80.8
+M5-08,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396765.0,9166165.0,87.4
+M5-09,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397285.0,9164925.0,72.1
+M5-10,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397045.0,9165615.0,55.0
+M5-11,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397535.0,9165145.0,101.2
+M5-12,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397505.0,9164785.0,47.9
+M5-13,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397335.0,9165305.0,84.2
+M5-14,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,396695.0,9165825.0,51.9
+M5-15,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397035.0,9164805.0,72.2
+M5-16,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397585.0,9164885.0,81.4
+M5-17,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396825.0,9166025.0,62.2
+M5-18,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397235.0,9165355.0,67.2
+M5-19,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397155.0,9164925.0,88.1
+M5-20,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397185.0,9164785.0,90.4
+M5-21,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397245.0,9165205.0,83.4
+M5-22,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396895.0,9165845.0,48.1
+M5-23,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396625.0,9166255.0,68.9
+M5-24,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397645.0,9164555.0,60.4
+M5-25,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397675.0,9165185.0,84.4
+M5-26,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396665.0,9166005.0,67.5
+M5-27,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,397605.0,9164695.0,89.6
+M5-28,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397575.0,9165305.0,84.9
+M5-29,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",uji,397385.0,9165125.0,82.7
+M5-30,5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",latih,396935.0,9165695.0,72.8
+M6-01,6,Endapan Sumbing Muda dan endapan material longsor,latih,396775.0,9165935.0,26.5
+M6-02,6,Endapan Sumbing Muda dan endapan material longsor,uji,396975.0,9164585.0,53.8
+M6-03,6,Endapan Sumbing Muda dan endapan material longsor,latih,397065.0,9164065.0,47.1
+M6-04,6,Endapan Sumbing Muda dan endapan material longsor,latih,397385.0,9164685.0,50.2
+M6-05,6,Endapan Sumbing Muda dan endapan material longsor,latih,396925.0,9164875.0,38.0
+M6-06,6,Endapan Sumbing Muda dan endapan material longsor,latih,396685.0,9165575.0,25.0
+M6-07,6,Endapan Sumbing Muda dan endapan material longsor,latih,397235.0,9164325.0,36.7
+M6-08,6,Endapan Sumbing Muda dan endapan material longsor,latih,396675.0,9164995.0,39.6
+M6-09,6,Endapan Sumbing Muda dan endapan material longsor,latih,396945.0,9164345.0,32.6
+M6-10,6,Endapan Sumbing Muda dan endapan material longsor,uji,397465.0,9164965.0,37.9
+M6-11,6,Endapan Sumbing Muda dan endapan material longsor,uji,397385.0,9164465.0,62.3
+M6-12,6,Endapan Sumbing Muda dan endapan material longsor,latih,397135.0,9165095.0,34.9
+M6-13,6,Endapan Sumbing Muda dan endapan material longsor,latih,396645.0,9164425.0,27.5
+M6-14,6,Endapan Sumbing Muda dan endapan material longsor,latih,397075.0,9163895.0,48.3
+M6-15,6,Endapan Sumbing Muda dan endapan material longsor,latih,397015.0,9164305.0,49.3
+M6-16,6,Endapan Sumbing Muda dan endapan material longsor,uji,396725.0,9165695.0,15.7
+M6-17,6,Endapan Sumbing Muda dan endapan material longsor,uji,396835.0,9165485.0,26.4
+M6-18,6,Endapan Sumbing Muda dan endapan material longsor,uji,397405.0,9164835.0,24.1
+M6-19,6,Endapan Sumbing Muda dan endapan material longsor,uji,396705.0,9165435.0,24.0
+M6-20,6,Endapan Sumbing Muda dan endapan material longsor,latih,397335.0,9164555.0,49.8
+M6-21,6,Endapan Sumbing Muda dan endapan material longsor,uji,396785.0,9165805.0,32.6
+M6-22,6,Endapan Sumbing Muda dan endapan material longsor,latih,397015.0,9164465.0,40.5
+M6-23,6,Endapan Sumbing Muda dan endapan material longsor,uji,396595.0,9165775.0,19.8
+M6-24,6,Endapan Sumbing Muda dan endapan material longsor,latih,397425.0,9164595.0,60.0
+M6-25,6,Endapan Sumbing Muda dan endapan material longsor,latih,397025.0,9164955.0,29.0
+M6-26,6,Endapan Sumbing Muda dan endapan material longsor,latih,396655.0,9165115.0,32.0
+M6-27,6,Endapan Sumbing Muda dan endapan material longsor,latih,397295.0,9164425.0,41.6
+M6-28,6,Endapan Sumbing Muda dan endapan material longsor,latih,397095.0,9163975.0,55.0
+M6-29,6,Endapan Sumbing Muda dan endapan material longsor,latih,397295.0,9164245.0,22.8
+M6-30,6,Endapan Sumbing Muda dan endapan material longsor,latih,397085.0,9164195.0,21.6
+M7-01,7,Tuff pasiran,latih,396595.0,9165465.0,55.1
+M7-02,7,Tuff pasiran,latih,396425.0,9166035.0,103.3
+M7-03,7,Tuff pasiran,uji,396435.0,9165765.0,118.3
+M7-04,7,Tuff pasiran,latih,396495.0,9165605.0,119.2
+M7-05,7,Tuff pasiran,latih,396495.0,9166335.0,50.6
+M7-06,7,Tuff pasiran,uji,396435.0,9165855.0,144.1
+M7-07,7,Tuff pasiran,latih,396435.0,9165445.0,61.8
+M7-08,7,Tuff pasiran,latih,396365.0,9165985.0,49.6
+M7-09,7,Tuff pasiran,uji,396345.0,9165895.0,60.4
+M7-10,7,Tuff pasiran,uji,396495.0,9166105.0,54.4
+M7-11,7,Tuff pasiran,latih,396355.0,9165615.0,48.0
+M7-12,7,Tuff pasiran,latih,396405.0,9165545.0,66.2
+M7-13,7,Tuff pasiran,latih,396475.0,9165355.0,55.9
+M7-14,7,Tuff pasiran,latih,396515.0,9166005.0,51.5
+M7-15,7,Tuff pasiran,latih,396545.0,9165385.0,82.9
+M7-16,7,Tuff pasiran,latih,396625.0,9165365.0,64.4
+M7-17,7,Tuff pasiran,latih,396475.0,9166265.0,67.6
+M7-18,7,Tuff pasiran,latih,396535.0,9165905.0,46.5
+M7-19,7,Tuff pasiran,uji,396585.0,9165555.0,64.0
+M7-20,7,Tuff pasiran,latih,396445.0,9165945.0,131.8
+M7-21,7,Tuff pasiran,latih,396525.0,9165815.0,48.1
+M7-22,7,Tuff pasiran,uji,396385.0,9165355.0,43.3
+M7-23,7,Tuff pasiran,latih,396505.0,9165715.0,48.4
+M7-24,7,Tuff pasiran,latih,396345.0,9165805.0,67.9
+M7-25,7,Tuff pasiran,latih,396385.0,9166115.0,47.6
+M7-26,7,Tuff pasiran,latih,396425.0,9165655.0,121.2
+M7-27,7,Tuff pasiran,latih,396505.0,9165505.0,135.4
+M7-28,7,Tuff pasiran,uji,396355.0,9165715.0,59.5
+M7-29,7,Tuff pasiran,uji,396585.0,9165645.0,57.0
+M7-30,7,Tuff pasiran,uji,396465.0,9166185.0,69.0

@@ -4,9 +4,13 @@ Badan Informasi Geospasial. (2026). *Info Data Demnas* [Halaman portal]. Ina-Geo
 
 Barnes, R. J., Dhanoa, M. S., & Lister, S. J. (1989). Standard normal variate transformation and de-trending of near-infrared diffuse reflectance spectra. *Applied Spectroscopy*, *43*(5), 772–777. https://doi.org/10.1366/0003702894202201
 
+Branco, P., Torgo, L., & Ribeiro, R. P. (2017). SMOGN: A pre-processing approach for imbalanced regression. *Proceedings of Machine Learning Research*, *74*, 36–50. https://proceedings.mlr.press/v74/branco17a.html
+
 Castaldi, F., Hueni, A., Chabrillat, S., Ward, K., Buttafuoco, G., Bomans, B., Vreys, K., Brell, M., & van Wesemael, B. (2019). Evaluating the capability of the Sentinel 2 data for soil organic carbon prediction in croplands. *ISPRS Journal of Photogrammetry and Remote Sensing*, *147*, 267–282. https://doi.org/10.1016/j.isprsjprs.2018.11.026
 
 Castaldi, F., Palombo, A., Santini, F., Pascucci, S., Pignatti, S., & Casa, R. (2016). Evaluation of the potential of the current and forthcoming multispectral and hyperspectral imagers to estimate soil texture and organic carbon. *Remote Sensing of Environment*, *179*, 54–65. https://doi.org/10.1016/j.rse.2016.03.025
+
+Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357. https://doi.org/10.1613/jair.953
 
 Demattê, J. A. M., Safanelli, J. L., Poppiel, R. R., Rizzo, R., Silvero, N. E. Q., Mendes, W. de S., Bonfatti, B. R., Dotto, A. C., Salazar, D. F. U., Mello, F. A. de O., Paiva, A. F. da S., Souza, A. B., Santos, N. V. dos, Maria Nascimento, C., Mello, D. C. de, Bellinaso, H., Gonzaga Neto, L., Amorim, M. T. A., Resende, M. E. B. de, . . . Lisboa, C. J. da S. (2020). Bare Earth's surface spectra as a proxy for soil resource monitoring. *Scientific Reports*, *10*(1), 4461. https://doi.org/10.1038/s41598-020-61408-1
 
@@ -14,11 +18,23 @@ Diek, S., Fornallaz, F., Schaepman, M. E., & de Jong, R. (2017). Barest pixel co
 
 Fatmawati, N. D. (2026). *Evaluasi pendekatan SCORPAN dalam prediksi spasial fraksi tekstur tanah pada bahan induk hasil proses alterasi di Sub-DAS Bompon* [Tesis magister, Universitas Gadjah Mada].
 
+Lemaître, G., Nogueira, F., & Aridas, C. K. (2017). Imbalanced-learn: A Python toolbox to tackle the curse of imbalanced datasets in machine learning. *Journal of Machine Learning Research*, *18*(17), 1–5. https://jmlr.org/papers/v18/16-365.html
+
+Malik, R. F. (2017). *Pemetaan geomorfologi detail menggunakan teknik step-wise-grid di Daerah Aliran Sungai (DAS) Bompon, Kabupaten Magelang, Jawa Tengah* [Karya akhir, Universitas Gadjah Mada].
+
+<!-- Catatan editor: entri Malik (2017) disalin dari daftar pustaka Fatmawati (2026). Jenis karya akhirnya (skripsi atau tesis) belum diverifikasi, dan naskahnya tidak tersedia di repository. -->
+
 Meyer, H., & Pebesma, E. (2021). Predicting into unknown space? Estimating the area of applicability of spatial prediction models. *Methods in Ecology and Evolution*, *12*(9), 1620–1633. https://doi.org/10.1111/2041-210X.13650
+
+Meyer, H., Reudenbach, C., Wöllauer, S., & Nauss, T. (2019). Importance of spatial predictor variable selection in machine learning applications – Moving from data reproduction to spatial prediction. *Ecological Modelling*, *411*, 108815. https://doi.org/10.1016/j.ecolmodel.2019.108815
 
 Molin, J. P., & Tavares, T. R. (2019). Sensor systems for mapping soil fertility attributes: Challenges, advances, and perspectives in Brazilian tropical soils. *Engenharia Agrícola*, *39*(spe), 126–147. https://doi.org/10.1590/1809-4430-Eng.Agric.v39nep126-147/2019
 
 Pohl, C., & van Genderen, J. L. (1998). Multisensor image fusion in remote sensing: Concepts, methods and applications. *International Journal of Remote Sensing*, *19*(5), 823–854. https://doi.org/10.1080/014311698215748
+
+Pontius, R. G., Jr., & Millones, M. (2011). Death to Kappa: Birth of quantity disagreement and allocation disagreement for accuracy assessment. *International Journal of Remote Sensing*, *32*(15), 4407–4429. https://doi.org/10.1080/01431161.2011.552923
+
+Prokhorenkova, L., Gusev, G., Vorobev, A., Dorogush, A. V., & Gulin, A. (2018). CatBoost: Unbiased boosting with categorical features. *Advances in Neural Information Processing Systems*, *31*, 6638–6648. https://proceedings.neurips.cc/paper/2018/hash/14491b756b3a51daac41c24863285549-Abstract.html
 
 Roberts, D. R., Bahn, V., Ciuti, S., Boyce, M. S., Elith, J., Guillera-Arroita, G., Hauenstein, S., Lahoz-Monfort, J. J., Schröder, B., Thuiller, W., Warton, D. I., Wintle, B. A., Hartig, F., & Dormann, C. F. (2017). Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure. *Ecography*, *40*(8), 913–929. https://doi.org/10.1111/ecog.02881
 

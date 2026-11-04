@@ -33,6 +33,14 @@ AKAR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) if '
 PELATIHAN = os.path.join(AKAR, 'Output', 'Pelatihan')
 CATATAN = {}
 
+# Kelas tutupan material Praktik 5 (Malik, 2017) dengan palet Okabe-Ito yang sama dengan notebook.
+MATERIAL = {1: 'Breksi andesit sisipan diorit', 2: 'Breksi andesit teralterasi',
+            3: 'Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh', 4: 'Breksi vulkanik',
+            5: 'Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit',
+            6: 'Endapan Sumbing Muda dan endapan material longsor', 7: 'Tuff pasiran'}
+WARNA_MATERIAL = {1: '#E69F00', 2: '#56B4E9', 3: '#0072B2', 4: '#009E73', 5: '#F0E442', 6: '#D55E00', 7: '#CC79A7'}
+PALET_MATERIAL = {k: (WARNA_MATERIAL[k], f'{k}. {v}') for k, v in MATERIAL.items()}
+
 
 def tunggu(ms=300):
     loop = QEventLoop()
@@ -293,6 +301,16 @@ class Uji:
             c.setAlpha(transparan)
             s = QgsFillSymbol.createSimple({'color': f'{c.red()},{c.green()},{c.blue()},{c.alpha()}', 'outline_color': tepi, 'outline_width': '0.15'})
             cat.append(QgsRendererCategory(nilai, s, str(nilai)))
+        lyr.setRenderer(QgsCategorizedSymbolRenderer(kolom, cat))
+        lyr.triggerRepaint()
+        iface.layerTreeView().refreshLayerSymbology(lyr.id())
+
+    def kategori_titik(self, lyr, kolom, warna, label=None, ukuran='2.4', tepi='#222222'):
+        """Titik bergaya Categorized; warna = {nilai: warna}, label = {nilai: teks legenda}."""
+        cat = []
+        for nilai, w in warna.items():
+            s = QgsMarkerSymbol.createSimple({'name': 'circle', 'color': w, 'outline_color': tepi, 'outline_width': '0.3', 'size': ukuran})
+            cat.append(QgsRendererCategory(nilai, s, (label or {}).get(nilai, str(nilai))))
         lyr.setRenderer(QgsCategorizedSymbolRenderer(kolom, cat))
         lyr.triggerRepaint()
         iface.layerTreeView().refreshLayerSymbology(lyr.id())

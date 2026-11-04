@@ -420,7 +420,7 @@ Perbedaannya mencolok. Peta riset mencatat 103 ha lahan 0–8%, sedangkan DEM gl
 3. Apa yang berubah jika skala sasaran 1:25.000, dengan MLA 2,5 ha?
 4. Di kebun sawit, batas blok dan jalan sangat jelas pada citra. Bagaimana menghindari batas SMU yang hanya mengikuti batas blok?
 
-SMU pada latihan ini tetap hipotesis, sampai diuji dengan pengamatan tanah. Praktik 5 akan menumpangkan peta prediksi sifat tanah di atas peta ini, dan pada Tahap 5 praktik tersebut akan terlihat seberapa jauh satuan bentuklahan benar-benar memisahkan nilai C-organik di titik sampel.
+SMU pada latihan ini tetap hipotesis, sampai diuji dengan pengamatan tanah. Praktik 5 akan menumpangkan peta prediksi tutupan material di atas peta ini, dan pada Tahap 8 praktik tersebut akan terlihat seberapa jauh satuan bentuklahan pada peta SMU benar-benar memisahkan kelas bahan induk.
 
 ## Jika Tertinggal
 
