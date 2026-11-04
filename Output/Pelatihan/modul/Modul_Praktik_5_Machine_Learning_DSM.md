@@ -16,7 +16,7 @@ Setelah mengikuti praktik ini, peserta memiliki kompetensi dalam:
 
 1. Menyiapkan kovariat SCORPAN dari data penginderaan jauh dan data lingkungan
 2. Memilih kovariat berdasarkan korelasi Pearson dan tingkat kepentingan kovariat
-3. Melatih CatBoost dengan kovariat kategorik dan menilainya dengan validasi acak dan validasi spasial
+3. Melatih CatBoost dengan kovariat kategorik, menilainya dengan validasi acak dan validasi spasial, serta membaca akurasi keseluruhan, kappa, presisi, recall, F1, dan matriks kebingungan
 4. Menangani kelas yang jumlah sampelnya tidak seimbang dengan bobot kelas dan SMOTE-NC
 5. Membuat dan membaca peta kelas, peta peluang, dan wilayah keberlakuan model
 
@@ -31,20 +31,20 @@ Setelah mengikuti praktik ini, peserta memiliki kompetensi dalam:
    - Peserta mampu menyatakan seberapa jauh sebuah peta kelas hasil DSM dapat dipercaya
 3. Indikator hasil belajar
    - Semua kovariat berukuran 192 × 362 piksel dengan piksel 10 m
-   - Tabel metrik memuat CatBoost dan pembandingnya pada validasi acak, blok spasial, dan zona
+   - Tabel metrik memuat akurasi, kappa, presisi makro, recall makro, dan F1 makro untuk CatBoost dan pembandingnya pada validasi acak, blok spasial, dan zona
    - Peta kelas, peta peluang, dan AOA tampil di QGIS bersama batas SMU
 4. Materi pokok
    - Faktor SCORPAN sebagai kovariat, dengan bahan induk sebagai sasaran
    - CatBoost dan kovariat kategorik
    - Pemilihan kovariat dengan korelasi Pearson dan kepentingan permutasi
-   - Validasi spasial, matriks kebingungan, dan data yang tidak seimbang
+   - Ukuran ketelitian klasifikasi, validasi spasial, matriks kebingungan, dan data yang tidak seimbang
    - Peluang kelas dan wilayah keberlakuan model
 
 ## Gambaran Praktik
 
-Praktik ini menyatukan semua hasil sebelumnya. Persamaan SCORPAN pada Modul 8 menyatakan tanah sebagai fungsi kondisi lingkungan, dan fungsi itu dipelajari dari data. Sasarannya tidak selalu berupa angka. Banyak kebutuhan pemetaan di perkebunan berupa kelas, misalnya jenis tanah, kelas drainase, atau bahan induk. Karena itu, sasaran praktik ini adalah **tutupan material**, yaitu tujuh kelas bahan induk pada peta Malik (2017) untuk Sub-DAS Bompon. Peserta menyiapkan datanya, memilih kovariatnya, melatih dan menilai modelnya, lalu menerapkannya ke setiap piksel sehingga menghasilkan peta kelas beserta peta peluangnya.
+Praktik ini menyatukan semua hasil sebelumnya. Persamaan SCORPAN pada Modul 8 menyatakan tanah sebagai fungsi kondisi lingkungan, dan fungsi itu dipelajari dari data. Sasarannya tidak selalu berupa angka. Banyak kebutuhan pemetaan di perkebunan berupa kelas, misalnya jenis tanah, kelas drainase, atau bahan induk (*parent material*), sehingga modelnya berupa klasifikasi (*classification*), bukan regresi (*regression*). Karena itu, sasaran praktik ini adalah **tutupan material**, yaitu tujuh kelas bahan induk pada peta Malik (2017) untuk Sub-DAS Bompon. Peserta menyiapkan datanya, memilih kovariatnya, melatih dan menilai modelnya, lalu menerapkannya ke setiap piksel sehingga menghasilkan peta kelas beserta peta peluangnya (*probability map*).
 
-Model utamanya adalah CatBoost (Prokhorenkova et al., 2018), algoritme *gradient boosting* yang dapat membaca kovariat kategorik secara langsung, sedangkan *random forest* menjadi pembanding. Dua hal perlu disampaikan sejak awal. Pertama, kelas di titik sampel diambil dari **peta**, bukan dari pengamatan lapangan, sehingga semua angka ketelitian menyatakan seberapa baik model mereproduksi peta Malik (2017). Kedua, **pada data latihan ini CatBoost tidak lebih teliti daripada *random forest*.** Keduanya jelas lebih baik daripada pembanding sederhana pada validasi acak dan validasi blok spasial, tetapi hampir gagal ketika diterapkan ke zona yang belum pernah dilihatnya. Temuan ini berasal dari uji coba dan bukan kekeliruan langkah. Peserta diharapkan menemukannya sendiri dan mampu menjelaskan penyebabnya.
+Model utamanya adalah CatBoost (Prokhorenkova et al., 2018), algoritme *gradient boosting* yang dapat membaca kovariat kategorik (*categorical features*) secara langsung, sedangkan *random forest* menjadi pembanding. Dua hal perlu disampaikan sejak awal. Pertama, kelas di titik sampel diambil dari **peta**, bukan dari pengamatan lapangan, sehingga semua angka ketelitian menyatakan seberapa baik model mereproduksi peta Malik (2017). Kedua, **pada data latihan ini CatBoost tidak lebih teliti daripada *random forest*.** Keduanya jelas lebih baik daripada pembanding sederhana pada validasi acak dan validasi blok spasial, tetapi hampir gagal ketika diterapkan ke zona yang belum pernah dilihatnya. Temuan ini berasal dari uji coba dan bukan kekeliruan langkah. Peserta diharapkan menemukannya sendiri dan mampu menjelaskan penyebabnya.
 
 ## Data yang Dipakai
 
@@ -80,7 +80,7 @@ Tabel P5.2 Tujuh Kelas Tutupan Material Sub-DAS Bompon
 
 Sumber: Hasil uji coba; luas dihitung dari `material_acuan_10m.tif` di dalam batas Sub-DAS
 
-Titik dibuat dari peta asal beresolusi 1 m dengan skrip `pelatihan_titik_tutupan_material.py`. Setiap titik berada di pusat satu sel grid kovariat 10 m, sekurang-kurangnya 15 m di dalam poligon kelasnya agar tidak jatuh di sel campuran pada batas kelas, dan disebar merata di setiap kelas dengan bantuan *k-means*. Kolom `subset` membagi titik menjadi latih dan uji secara acak berstrata. Ada tiga catatan tentang data ini:
+Titik dibuat dari peta asal beresolusi 1 m dengan skrip `pelatihan_titik_tutupan_material.py`. Setiap titik berada di pusat satu sel grid kovariat 10 m, sekurang-kurangnya 15 m di dalam poligon kelasnya agar tidak jatuh di sel campuran pada batas kelas, dan disebar merata di setiap kelas dengan bantuan *k-means*. Kolom `subset` membagi titik menjadi data latih (*training data*) dan data uji (*test data*) secara acak berstrata (*stratified random split*). Ada tiga catatan tentang data ini:
 
 1. **Asal kelas**, yaitu peta Malik (2017) yang merupakan hasil pemetaan geomorfologi, bukan pengamatan di setiap titik. Peta asal hanya menyimpan kode 1 sampai 7. Nama kelasnya dicocokkan dengan legenda Gambar 2.2 pada Fatmawati (2026) berdasarkan letak setiap kode di peta.
 2. **Jumlah titik sama untuk setiap kelas**, padahal luas kelas terbesar hampir delapan kali luas kelas terkecil. Akibat rancangan ini dibahas pada Tahap 6 dan Tahap 7.
@@ -90,20 +90,28 @@ Titik dibuat dari peta asal beresolusi 1 m dengan skrip `pelatihan_titik_tutupan
 
 Buka `Praktik_5_Machine_Learning_DSM.ipynb` di JupyterLab atau Colab, lalu jalankan sel sampai akhir **Bagian A**. Seluruh notebook memerlukan 2–5 menit pada komputer uji coba. Waktu di laptop Anda dapat berbeda.
 
-Bagian A memperkenalkan alur dasarnya. Titik dan kovariat dibaca, nilai kovariat diambil di setiap titik, lalu CatBoost dilatih dengan pembagian latih dan uji pada kolom `subset`. Ukuran utamanya adalah **akurasi keseluruhan** (*overall accuracy*), yaitu proporsi titik yang kelasnya ditebak benar. Dengan tujuh kelas yang sama banyak, menebak sembarang menghasilkan akurasi sekitar 0,14.
+Bagian A memperkenalkan alur dasarnya. Titik dan kovariat dibaca, nilai kovariat diambil di setiap titik, lalu CatBoost dilatih dengan pembagian latih dan uji pada kolom `subset`. Ketelitian model klasifikasi dinyatakan dengan lima ukuran berikut:
+
+1. **Akurasi keseluruhan** (*overall accuracy*, OA), yaitu proporsi titik yang kelasnya ditebak benar. Dengan tujuh kelas yang sama banyak, menebak sembarang menghasilkan akurasi sekitar 0,14.
+2. **Kappa Cohen** (*Cohen's kappa*; Cohen, 1960), yaitu seberapa jauh akurasi melampaui kesepakatan yang dapat terjadi karena kebetulan (*chance agreement*). Nilai 0 berarti model tidak lebih baik daripada kebetulan, sedangkan nilai 1 berarti semua titik ditebak benar.
+3. **Presisi makro** (*macro-averaged precision*), yaitu rata-rata presisi ketujuh kelas.
+4. **Recall makro** (*macro-averaged recall*), yaitu rata-rata recall ketujuh kelas.
+5. **F1 makro** (*macro-averaged F1-score*), yaitu rata-rata F1 ketujuh kelas.
+
+Ukuran makro memberi bobot yang sama pada setiap kelas, berapa pun jumlah titiknya, sehingga kelas yang selalu salah ditebak ikut menurunkan nilainya. Arti presisi, recall, dan F1 setiap kelas dijelaskan pada Tahap 5.
 
 Tabel P5.3 Model Pertama pada Data Latih dan Data Uji
 
-| **Data** | **Akurasi** | **Kappa** | **F1 makro** |
-| :---: | ---: | ---: | ---: |
-| Data latih (147 titik) | 1,00 | 1,00 | 1,00 |
-| Data uji (63 titik) | 0,54 | 0,46 | 0,51 |
+| **Data** | **Akurasi** | **Kappa** | **Presisi makro** | **Recall makro** | **F1 makro** |
+| :---: | ---: | ---: | ---: | ---: | ---: |
+| Data latih (147 titik) | 1,00 | 1,00 | 1,00 | 1,00 | 1,00 |
+| Data uji (63 titik) | 0,54 | 0,46 | 0,51 | 0,54 | 0,51 |
 
 Sumber: Hasil uji coba, CatBoost dengan 14 kovariat numerik
 
 Pada data latih, model menebak semua titik dengan benar. Pada data yang belum pernah dilihatnya, akurasinya turun menjadi 0,54. Inilah *overfitting* yang dibahas pada Modul 8. Angka 0,54 memang jauh di atas 0,14, tetapi berarti hampir separuh titik uji masih salah kelas.
 
-Sel berikutnya mengulang pembagian acak 70/30 sebanyak 30 kali. Akurasinya berkisar dari 0,40 sampai 0,60, dengan median 0,48. Satu pembagian yang kebetulan baik dapat memberi kesan keliru, sehingga laporan yang hanya menyebut satu pembagian tunggal perlu dibaca dengan hati-hati.
+Sel berikutnya mengulang pembagian acak 70/30 sebanyak 30 kali. Akurasinya berkisar dari 0,40 sampai 0,60, dengan median 0,48. Satu pembagian yang kebetulan baik dapat memberi kesan keliru, sehingga laporan yang hanya menyebut satu pembagian tunggal (*single train-test split*) perlu dibaca dengan hati-hati.
 
 ![](../data/praktik-5/hasil-contoh/sebaran_akurasi_pembagian_tunggal.png)
 
@@ -113,7 +121,7 @@ Sumber: Hasil uji coba
 
 ## Tahap 2: Menyiapkan Kovariat di QGIS
 
-Folder `kovariat/` sudah berisi semua kovariat siap pakai, sehingga notebook tetap berjalan walaupun tahap ini belum selesai. Tahap ini menunjukkan cara membuatnya, dan kovariat buatan Anda dapat menimpa berkas di folder itu. Tutup dulu layer yang akan ditimpa dari panel **Layers**. Kovariat optik dan radar berasal dari data Praktik 1 dan Praktik 4, sehingga tidak dibuat ulang. Atribut medan dihitung dari DEMNAS (Badan Informasi Geospasial, 2026), yaitu DEM yang sama dengan Praktik 1. Pada folder ini, DEMNAS sudah diproyeksikan ke UTM zona 49S dengan piksel 8 m dan dipotong 500 m lebih luas daripada grid kovariat, sehingga atribut medan di tepi Sub-DAS tidak terpotong.
+Folder `kovariat/` sudah berisi semua kovariat siap pakai, sehingga notebook tetap berjalan walaupun tahap ini belum selesai. Tahap ini menunjukkan cara membuatnya, dan kovariat buatan Anda dapat menimpa berkas di folder itu. Tutup dulu layer yang akan ditimpa dari panel **Layers**. Kovariat optik dan radar berasal dari data Praktik 1 dan Praktik 4, sehingga tidak dibuat ulang. Atribut medan (*terrain attributes*) dihitung dari DEMNAS (Badan Informasi Geospasial, 2026), yaitu DEM yang sama dengan Praktik 1. Pada folder ini, DEMNAS sudah diproyeksikan ke UTM zona 49S dengan piksel 8 m dan dipotong 500 m lebih luas daripada grid kovariat, sehingga atribut medan di tepi Sub-DAS tidak terpotong.
 
 1. Buat proyek baru, simpan sebagai `hasil/praktik5.qgz`, lalu muat `demnas_8m.tif` dan semua layer `bompon_vektor.gpkg`.
 2. **Elevasi.** Pilih **Raster > Projections > Warp (Reproject)** dengan **Input layer** `demnas_8m`, **Target CRS** `EPSG:32749`, **Resampling method to use** *Bilinear (2x2 Kernel)*, dan **Output file resolution** `10`. Buka **Advanced Parameters**, isi **Georeferenced extents of output file to be created** dengan `396060,397980,9162990,9166610 [EPSG:32749]`, lalu pilih **Output data type** *Float32*. Simpan ke `kovariat/elevasi.tif`. Pengaturan ini sama dengan Praktik 1 tahap 2.
@@ -125,7 +133,7 @@ Gambar P5.2 Membawa DEMNAS 8 m ke grid kovariat 10 m
 Sumber: Tangkapan layar uji coba
 
 3. **Kemiringan lereng.** Pilih **Raster > Analysis > Slope**, dengan **Input layer** `elevasi`, centang **Express slope as percent** dan **Compute edges**, lalu simpan ke `kovariat/lereng.tif`.
-4. **Arah hadap.** Pilih **Raster > Analysis > Aspect**, dengan input yang sama, centang **Return 0 for flat** dan **Compute edges**, lalu simpan ke `hasil/aspek_derajat.tif`. Nilai 359° dan 1° sebenarnya berdekatan, tetapi angkanya berjauhan. Karena itu arah diubah menjadi kosinus, yaitu ukuran seberapa menghadap ke utara, dengan Raster Calculator berikut, lalu disimpan ke `kovariat/arah_utara.tif`.
+4. **Arah hadap.** Pilih **Raster > Analysis > Aspect**, dengan input yang sama, centang **Return 0 for flat** dan **Compute edges**, lalu simpan ke `hasil/aspek_derajat.tif`. Nilai 359° dan 1° sebenarnya berdekatan, tetapi angkanya berjauhan. Karena itu arah diubah menjadi kosinus, yaitu ukuran seberapa menghadap ke utara (*northness*), dengan Raster Calculator berikut, lalu disimpan ke `kovariat/arah_utara.tif`.
 
 ```
 cos("aspek_derajat@1" * 3.14159265 / 180)
@@ -145,7 +153,7 @@ Gambar P5.4 Dialog Topographic Position Index
 
 Sumber: Tangkapan layar uji coba
 
-6. **Kebasahan topografi.** Cari **r.topidx** di Processing Toolbox. Isi **Input elevation layer** `demnas_8m`, lalu simpan ke `hasil/twi_8m.tif`. Alat ini memerlukan penyedia GRASS. Jika tidak tersedia di laptop Anda, lewati langkah ini dan pakai berkas yang sudah ada.
+6. **Kebasahan topografi.** Indeks kebasahan topografi (*topographic wetness index*, TWI) bernilai tinggi pada tempat yang landai dan menerima aliran dari daerah tangkapan yang luas di atasnya. Cari **r.topidx** di Processing Toolbox. Isi **Input elevation layer** `demnas_8m`, lalu simpan ke `hasil/twi_8m.tif`. Alat ini memerlukan penyedia GRASS. Jika tidak tersedia di laptop Anda, lewati langkah ini dan pakai berkas yang sudah ada.
 
 ![](../screenshots/praktik-5/04_dialog_twi_grass.png)
 
@@ -257,7 +265,7 @@ B1 memetakan kovariat ke faktor SCORPAN. Kali ini yang ditanyakan adalah seberap
 
 Tabel median per kelas pada A2 sudah memberi petunjuk awal. Kelas 6, yaitu endapan Sumbing Muda dan material longsor, sangat berbeda dari kelas lain. Median lerengnya 8,9%, sedangkan kelas lain 18,8–23,8%, dan median indeks kebasahan topografinya 7,4, sedangkan kelas lain 5,0–5,6. Enam kelas lainnya jauh lebih mirip satu sama lain.
 
-B2 menghitung korelasi Pearson antarkovariat dari seluruh piksel di dalam Sub-DAS. Empat pasangan memiliki |r| ≥ 0,8 (Tabel P5.5). Pasangan itu baru dicatat, belum dibuang. Kovariat mana yang dipertahankan diputuskan pada Tahap 5, setelah kepentingannya bagi model diketahui.
+B2 menghitung koefisien korelasi Pearson (*Pearson correlation coefficient*, r) antarkovariat dari seluruh piksel di dalam Sub-DAS. Empat pasangan memiliki |r| ≥ 0,8 (Tabel P5.5). Pasangan itu baru dicatat, belum dibuang. Kovariat mana yang dipertahankan diputuskan pada Tahap 5, setelah kepentingannya bagi model diketahui.
 
 ![](../data/praktik-5/hasil-contoh/korelasi_kovariat.png)
 
@@ -276,7 +284,7 @@ Tabel P5.5 Pasangan Kovariat dengan Korelasi Pearson |r| ≥ 0,8
 
 Sumber: Hasil uji coba, seluruh piksel di dalam Sub-DAS
 
-B3 menyiapkan kovariat kategorik dalam dua bentuk. *Random forest* di scikit-learn memerlukan *one-hot*, yaitu satu kolom 0/1 untuk setiap kelas kategori, sehingga 16 kovariat menjadi 24 kolom. CatBoost menerima kolom berisi nama kelas apa adanya. Kategori dengan sedikit nilai dikodekan *one-hot* di dalam model, sedangkan kategori dengan banyak nilai diubah menjadi statistik sasaran berurutan (*ordered target statistics*). Statistik ini pada dasarnya rata-rata sasaran per kategori, tetapi untuk setiap titik hanya dihitung dari titik-titik sebelumnya dalam suatu urutan acak, sehingga nilai sasaran titik itu tidak ikut menentukan kodenya sendiri (Prokhorenkova et al., 2018). Keunggulan ini paling terasa pada kategori yang sangat beragam, misalnya kode blok kebun atau varietas.
+B3 menyiapkan kovariat kategorik dalam dua bentuk. *Random forest* di scikit-learn memerlukan pengodean *one-hot* (*one-hot encoding*), yaitu satu kolom 0/1 untuk setiap kelas kategori, sehingga 16 kovariat menjadi 24 kolom. CatBoost menerima kolom berisi nama kelas apa adanya (*native categorical feature handling*). Kategori dengan sedikit nilai dikodekan *one-hot* di dalam model, sedangkan kategori dengan banyak nilai diubah menjadi statistik sasaran berurutan (*ordered target statistics*). Statistik ini pada dasarnya rata-rata sasaran per kategori, tetapi untuk setiap titik hanya dihitung dari titik-titik sebelumnya dalam suatu urutan acak, sehingga nilai sasaran titik itu tidak ikut menentukan kodenya sendiri (Prokhorenkova et al., 2018). Keunggulan ini paling terasa pada kategori yang sangat beragam, misalnya kode blok kebun atau varietas.
 
 Tabel silang pada B3 memperlihatkan dua hal. Seluruh titik kelas 6 berada pada Dataran Koluvial dan Lereng Kaki Koluvial, dan di kedua bentuklahan itu hanya ada satu titik dari kelas lain. Selain itu, penggunaan lahan didominasi agroforestri, yaitu 149 dari 210 titik. Kecocokan bentuklahan dengan kelas 6 masuk akal secara proses, tetapi perlu diingat bahwa peta bentuklahan dan peta material sama-sama hasil kajian geomorfologi di wilayah yang sama. Sebagian kecocokan itu mungkin terjadi karena batasnya ditarik dengan cara yang serupa.
 
@@ -286,7 +294,7 @@ Tabel silang pada B3 memperlihatkan dua hal. Seluruh titik kelas 6 berada pada D
 
 Jalankan **Bagian C**, sel C1 sampai C4.
 
-C1 membentuk tiga skema validasi. Skema acak membagi titik secara acak ke dalam lima lipatan. Skema blok spasial membagi wilayah menjadi blok persegi 400 m, dan setiap blok utuh masuk ke satu lipatan. Skema zona mengelompokkan titik menjadi lima zona besar, sehingga meniru penerapan model ke wilayah yang benar-benar baru. Pada skema zona, satu lipatan tidak memiliki satu pun titik latih kelas 7, sehingga kelas itu mustahil ditebak benar pada lipatan tersebut.
+C1 membentuk tiga skema validasi silang (*cross-validation*). Skema acak (*stratified random k-fold cross-validation*) membagi titik secara acak ke dalam lima lipatan (*fold*). Skema blok spasial (*spatial block cross-validation*) membagi wilayah menjadi blok persegi 400 m, dan setiap blok utuh masuk ke satu lipatan. Skema zona (*leave-cluster-out cross-validation*) mengelompokkan titik menjadi lima zona besar dengan *k-means*, sehingga meniru penerapan model ke wilayah yang benar-benar baru. Pada skema zona, satu lipatan tidak memiliki satu pun titik latih kelas 7, sehingga kelas itu mustahil ditebak benar pada lipatan tersebut.
 
 ![](../data/praktik-5/hasil-contoh/skema_validasi.png)
 
@@ -294,26 +302,40 @@ Gambar P5.13 Tiga skema validasi, dengan warna yang menunjukkan nomor lipatan
 
 Sumber: Hasil uji coba
 
-C2 membandingkan empat model. Dua di antaranya adalah pembanding sederhana, yaitu menebak kelas terbanyak dan memberi satu kelas material untuk setiap bentuklahan. Pembanding kedua setara dengan peta konvensional, yang memberi satu label untuk setiap satuan peta.
+C2 membandingkan empat model. Dua di antaranya adalah pembanding sederhana (*baseline*), yaitu menebak kelas terbanyak (*majority class*) dan memberi satu kelas material untuk setiap bentuklahan. Pembanding kedua setara dengan peta konvensional, yang memberi satu label untuk setiap satuan peta.
 
 Tabel P5.6 Hasil Validasi Silang Klasifikasi Tutupan Material
 
-| **Model** | **Akurasi acak** | **Akurasi blok spasial** | **Akurasi zona** | **F1 makro blok spasial** |
-| :-----: | ---: | ---: | ---: | ---: |
-| Kelas terbanyak | 0,14 | 0,02 | 0,00 | 0,01 |
-| Kelas terbanyak per bentuklahan | 0,30 | 0,19 | 0,15 | 0,18 |
-| *Random forest* (*one-hot*) | 0,51 | 0,37 | 0,19 | 0,35 |
-| CatBoost | 0,48 | 0,38 | 0,18 | 0,37 |
+| **Model** | **Validasi** | **Akurasi** | **Kappa** | **Presisi makro** | **Recall makro** | **F1 makro** |
+| :-----: | :---: | ---: | ---: | ---: | ---: | ---: |
+| Kelas terbanyak | Acak | 0,14 | 0,00 | 0,02 | 0,14 | 0,04 |
+| Kelas terbanyak | Blok spasial | 0,02 | −0,14 | 0,00 | 0,02 | 0,01 |
+| Kelas terbanyak | Zona | 0,00 | −0,17 | 0,00 | 0,00 | 0,00 |
+| Kelas terbanyak per bentuklahan | Acak | 0,30 | 0,18 | 0,23 | 0,30 | 0,25 |
+| Kelas terbanyak per bentuklahan | Blok spasial | 0,19 | 0,05 | 0,18 | 0,19 | 0,18 |
+| Kelas terbanyak per bentuklahan | Zona | 0,15 | 0,01 | 0,14 | 0,15 | 0,15 |
+| *Random forest* (*one-hot*) | Acak | 0,51 | 0,43 | 0,47 | 0,51 | 0,49 |
+| *Random forest* (*one-hot*) | Blok spasial | 0,37 | 0,26 | 0,35 | 0,37 | 0,35 |
+| *Random forest* (*one-hot*) | Zona | 0,19 | 0,05 | 0,18 | 0,19 | 0,18 |
+| CatBoost | Acak | 0,48 | 0,39 | 0,45 | 0,48 | 0,46 |
+| CatBoost | Blok spasial | 0,38 | 0,28 | 0,37 | 0,38 | 0,37 |
+| CatBoost | Zona | 0,18 | 0,04 | 0,18 | 0,18 | 0,18 |
 
-Sumber: Hasil uji coba dengan 16 kovariat; nilai kappa tersimpan di `metrik_validasi_material.csv`
+Sumber: Hasil uji coba dengan 16 kovariat; tersimpan di `metrik_validasi_material.csv`
 
-Bacalah tabel ini per kolom. Pada validasi acak dan blok spasial, kedua model pembelajaran mesin jelas melampaui pembanding sederhana. Akurasi blok spasial sekitar 0,1 lebih rendah daripada akurasi acak, karena pada validasi acak titik uji selalu memiliki tetangga dekat di data latih. Pada skema zona, akurasi kedua model turun menjadi 0,18–0,19, hanya sedikit di atas menebak sembarang. Model yang dipelajari di satu bagian Sub-DAS hampir tidak berlaku di bagian lain. Ini peringatan penting sebelum memakai model dari satu kebun untuk kebun tetangga.
+Bandingkan setiap model pada ketiga skema validasi. Pada validasi acak dan blok spasial, kedua model pembelajaran mesin (*machine learning*) jelas melampaui pembanding sederhana. Akurasi blok spasial sekitar 0,1 lebih rendah daripada akurasi acak, karena pada validasi acak titik uji selalu memiliki tetangga dekat di data latih. Pada skema zona, akurasi kedua model turun menjadi 0,18–0,19 dan kappanya hanya 0,04–0,05, sedikit di atas menebak sembarang. Model yang dipelajari di satu bagian Sub-DAS hampir tidak berlaku di bagian lain. Ini peringatan penting sebelum memakai model dari satu kebun untuk kebun tetangga.
 
-CatBoost dan *random forest* praktis sama. Sel tambahan pada C2 juga menunjukkan bahwa cara CatBoost mengodekan kategori tidak memperbaiki hasil. Dengan *one-hot* di dalam model, akurasi blok spasialnya 0,38, sedangkan dengan statistik sasaran berurutan, yaitu pengaturan bawaannya, akurasinya 0,35 dan waktunya sekitar delapan kali lebih lama (32 detik dibanding 4 detik pada komputer uji coba). Hanya ada dua kovariat kategorik, masing-masing dengan 6 dan 4 kelas, sehingga keunggulan CatBoost dalam mengolah kategori belum mendapat kesempatan untuk tampak.
+CatBoost dan *random forest* praktis sama. Sel tambahan pada C2 juga menunjukkan bahwa cara CatBoost mengodekan kategori tidak memperbaiki hasil. Dengan *one-hot* di dalam model, akurasi blok spasialnya 0,38, sedangkan dengan statistik sasaran berurutan, yaitu pengaturan bawaannya, akurasinya 0,35 dan waktunya sekitar enam kali lebih lama (37 detik dibanding 6 detik pada komputer uji coba). Hanya ada dua kovariat kategorik, masing-masing dengan 6 dan 4 kelas, sehingga keunggulan CatBoost dalam mengolah kategori belum mendapat kesempatan untuk tampak.
 
-Kappa dilaporkan karena lazim dipakai, tetapi pada data ini tidak menambah informasi. Jumlah titik per kelas sama, sehingga kappa hanyalah akurasi yang diskalakan ulang. Pontius dan Millones (2011) bahkan menganjurkan agar kappa diganti dengan ukuran selisih jumlah dan selisih letak kelas.
+Kappa dan recall makro perlu dibaca dengan hati-hati pada data ini. Jumlah titik setiap kelas sama, sehingga kappa hanyalah akurasi yang diskalakan ulang, yaitu (akurasi − 1/7) / (1 − 1/7), dan recall makro persis sama dengan akurasi. Kappa negatif pada pembanding kelas terbanyak berarti tebakannya lebih buruk daripada kebetulan. Presisi makro dapat berbeda dari akurasi karena nilainya turun bila model sering memberikan suatu kelas kepada titik yang sebenarnya bukan kelas itu. Kappa tetap dilaporkan karena lazim dipakai dalam penilaian ketelitian peta, walaupun Pontius dan Millones (2011) menganjurkan agar kappa diganti dengan ukuran selisih jumlah (*quantity disagreement*) dan selisih letak kelas (*allocation disagreement*).
 
-C3 menampilkan matriks kebingungan (*confusion matrix*) CatBoost pada validasi blok spasial. Recall adalah proporsi titik suatu kelas yang ditebak benar, sedangkan presisi adalah proporsi tebakan suatu kelas yang memang benar.
+C3 menampilkan matriks kebingungan (*confusion matrix*) CatBoost pada validasi blok spasial. Dalam penginderaan jauh, matriks ini juga disebut matriks kesalahan (*error matrix*). Baris matriks adalah kelas sebenarnya, sedangkan kolomnya adalah kelas tebakan model. Dari matriks itu dihitung tiga ukuran per kelas:
+
+1. **Recall** (*recall* atau *sensitivity*), yaitu proporsi titik suatu kelas yang ditebak benar. Dalam penilaian ketelitian peta, ukuran ini disebut akurasi pembuat (*producer's accuracy*), karena menyatakan seberapa lengkap pembuat peta menangkap kelas itu (Congalton, 1991).
+2. **Presisi** (*precision*), yaitu proporsi tebakan suatu kelas yang memang benar. Ukuran ini disebut akurasi pengguna (*user's accuracy*), karena menyatakan seberapa besar peluang pengguna menemukan kelas itu di lapangan bila peta menyebutkannya.
+3. **F1** (*F1-score*), yaitu rata-rata harmonik (*harmonic mean*) presisi dan recall, sehingga nilainya hanya tinggi bila keduanya tinggi.
+
+Kebalikan recall disebut kesalahan omisi (*omission error*), yaitu bagian titik suatu kelas yang terlewat. Kebalikan presisi disebut kesalahan komisi (*commission error*), yaitu bagian tebakan suatu kelas yang sebenarnya milik kelas lain. Rata-rata ketiga ukuran itu untuk ketujuh kelas adalah ukuran makro pada Tabel P5.6.
 
 ![](../data/praktik-5/hasil-contoh/matriks_kebingungan.png)
 
@@ -333,11 +355,11 @@ Tabel P5.7 Ketelitian per Kelas pada Validasi Blok Spasial
 | 6 | Endapan Sumbing Muda dan endapan material longsor | 1,00 | 0,91 | 0,95 |
 | 7 | Tuff pasiran | 0,50 | 0,38 | 0,43 |
 
-Sumber: Hasil uji coba, CatBoost dengan 16 kovariat
+Sumber: Hasil uji coba, CatBoost dengan 16 kovariat; recall setara dengan *producer's accuracy* dan presisi setara dengan *user's accuracy*
 
 Semua titik kelas 6 ditebak benar, karena kelas ini menempati dataran dan kaki lereng koluvial yang landai dan dekat sungai. Kelas 2, yaitu breksi andesit teralterasi, paling sering tertukar dengan kelas lain (F1 0,07), disusul kelas 4, kelas 5, dan kelas 3 (F1 0,23–0,27). Kelas-kelas itu berupa batuan breksi dan endapan pada lereng perbukitan, dan kovariat yang tersedia hampir tidak membedakannya.
 
-C4 memilih kovariat untuk model akhir dengan dua informasi. Tingkat kepentingan dihitung dengan permutasi, yaitu mengacak nilai satu kovariat pada data uji setiap lipatan blok spasial, lalu mengukur penurunan akurasinya. Kepentingan sengaja dihitung pada data yang tidak dipakai melatih model, karena kepentingan dari data latih dapat menonjolkan kovariat yang hanya membantu model menghafal (Meyer et al., 2019). Aturan pemilihannya adalah sebagai berikut:
+C4 memilih kovariat untuk model akhir dengan dua informasi. Tingkat kepentingan (*variable importance*) dihitung dengan permutasi (*permutation importance*), yaitu mengacak nilai satu kovariat pada data uji setiap lipatan blok spasial, lalu mengukur penurunan akurasinya. Kepentingan sengaja dihitung pada data yang tidak dipakai melatih model, karena kepentingan dari data latih dapat menonjolkan kovariat yang hanya membantu model menghafal (Meyer et al., 2019). Aturan pemilihannya adalah sebagai berikut:
 
 1. **Urutan**, yaitu kovariat diurutkan dari kepentingan permutasi terbesar.
 2. **Kepentingan positif**, yaitu kovariat dengan kepentingan ≤ 0 dibuang, karena mengacaknya tidak menurunkan akurasi pada data yang belum pernah dilihat model.
@@ -374,19 +396,21 @@ Tabel P5.8 Kepentingan Kovariat dan Keputusan Pemilihan
 
 Sumber: Hasil uji coba; kepentingan permutasi berupa penurunan akurasi rata-rata pada lima lipatan blok spasial
 
-Ketinggian adalah kovariat terpenting dengan selisih jauh, disusul jarak ke sungai. Kecuali untuk `elevasi`, `jarak_sungai`, `cmr_2024`, dan `sar_vv`, simpangan antarlipatan pada Gambar P5.15 lebih besar daripada nilai kepentingannya sendiri, sehingga urutan kovariat lainnya tidak stabil. Kepentingan bawaan CatBoost, yang dihitung dari data latih, memberi gambaran yang berbeda. `kat_penggunaan_lahan`, misalnya, memperoleh 6,1% pada kepentingan bawaan, tetapi mengacaknya hanya menurunkan akurasi sebesar 0,004 pada data uji. `lereng` dan `tri` hampir identik (r = 0,99). Dari pasangan itu `tri` yang dipertahankan, karena `lereng` sudah tersisih oleh aturan kepentingan. Hal yang sama terjadi pada pasangan `bsi_2024` dan `cmr_2024`.
+Ketinggian adalah kovariat terpenting dengan selisih jauh, disusul jarak ke sungai. Kecuali untuk `elevasi`, `jarak_sungai`, `cmr_2024`, dan `sar_vv`, simpangan antarlipatan pada Gambar P5.15 lebih besar daripada nilai kepentingannya sendiri, sehingga urutan kovariat lainnya tidak stabil. Kepentingan bawaan CatBoost (*built-in feature importance*), yang dihitung dari data latih, memberi gambaran yang berbeda. `kat_penggunaan_lahan`, misalnya, memperoleh 6,1% pada kepentingan bawaan, tetapi mengacaknya hanya menurunkan akurasi sebesar 0,004 pada data uji. `lereng` dan `tri` hampir identik (r = 0,99). Dari pasangan itu `tri` yang dipertahankan, karena `lereng` sudah tersisih oleh aturan kepentingan. Hal yang sama terjadi pada pasangan `bsi_2024` dan `cmr_2024`.
 
 Tabel P5.9 Pengaruh Pemilihan Kovariat pada Ketelitian CatBoost
 
-| **Kovariat** | **Jumlah** | **Akurasi acak** | **Akurasi blok spasial** | **F1 makro blok spasial** |
-| :-----: | :---: | ---: | ---: | ---: |
-| Semua kovariat | 16 | 0,48 | 0,38 | 0,37 |
-| Kovariat terpilih | 12 | 0,53 | 0,40 | 0,39 |
-| Dipilih ulang di dalam setiap lipatan (*nested*) | 5–10 | – | 0,37 | 0,36 |
+| **Kovariat** | **Jumlah** | **Validasi** | **Akurasi** | **Kappa** | **Presisi makro** | **Recall makro** | **F1 makro** |
+| :-----: | :---: | :---: | ---: | ---: | ---: | ---: | ---: |
+| Semua kovariat | 16 | Acak | 0,48 | 0,39 | 0,45 | 0,48 | 0,46 |
+| Semua kovariat | 16 | Blok spasial | 0,38 | 0,28 | 0,37 | 0,38 | 0,37 |
+| Kovariat terpilih | 12 | Acak | 0,53 | 0,46 | 0,50 | 0,53 | 0,51 |
+| Kovariat terpilih | 12 | Blok spasial | 0,40 | 0,29 | 0,38 | 0,40 | 0,39 |
+| Dipilih ulang di dalam setiap lipatan (*nested*) | 5–10 | Blok spasial | 0,37 | 0,27 | 0,35 | 0,37 | 0,36 |
 
 Sumber: Hasil uji coba
 
-Dengan 12 kovariat, akurasi blok spasial naik sedikit dari 0,38 menjadi 0,40. Angka itu optimistis, karena kovariat dipilih memakai lipatan yang sama dengan yang dipakai untuk menilainya. Jika pemilihan diulang di dalam setiap lipatan hanya dari data latihnya (*nested*), akurasinya 0,37, praktis sama dengan memakai semua kovariat. Jadi, pada data ini pemilihan kovariat tidak menaikkan ketelitian. Manfaatnya adalah model yang lebih ramping dan tersingkirnya kovariat yang hanya mengulang informasi kovariat lain. Kovariat yang terpilih juga berubah dari lipatan ke lipatan. Setiap lipatan memilih 5 sampai 10 kovariat, dan hanya tiga yang selalu terpilih, yaitu `elevasi`, `jarak_sungai`, dan `bi_2024`. Hasil pemilihan kovariat pada data sebanyak ini tidak boleh dianggap sebagai daftar baku.
+Dengan 12 kovariat, akurasi blok spasial naik sedikit dari 0,38 menjadi 0,40. Angka itu optimistis, karena kovariat dipilih memakai lipatan yang sama dengan yang dipakai untuk menilainya. Jika pemilihan diulang di dalam setiap lipatan hanya dari data latihnya, yang disebut validasi silang bersarang (*nested cross-validation*), akurasinya 0,37, praktis sama dengan memakai semua kovariat. Jadi, pada data ini pemilihan kovariat tidak menaikkan ketelitian. Manfaatnya adalah model yang lebih ramping dan tersingkirnya kovariat yang hanya mengulang informasi kovariat lain. Kovariat yang terpilih juga berubah dari lipatan ke lipatan. Setiap lipatan memilih 5 sampai 10 kovariat, dan hanya tiga yang selalu terpilih, yaitu `elevasi`, `jarak_sungai`, dan `bi_2024`. Hasil pemilihan kovariat pada data sebanyak ini tidak boleh dianggap sebagai daftar baku.
 
 **Titik periksa.** Folder `hasil/` berisi `metrik_validasi_material.csv`, `matriks_kebingungan.png`, dan `kepentingan_kovariat.png`, dan notebook mencetak 12 kovariat terpilih.
 
@@ -394,21 +418,30 @@ Dengan 12 kovariat, akurasi blok spasial naik sedikit dari 0,38 menjadi 0,40. An
 
 Jalankan sel C5.
 
-Data latihan ini seimbang, tetapi di kebun keadaan seperti itu jarang terjadi. Bila titik disebar acak, jumlah titik setiap kelas kira-kira sebanding dengan luasnya, sehingga kelas yang sempit hanya memperoleh sedikit titik dan model cenderung mengabaikannya. C5 menirukan keadaan itu. Pada setiap lipatan blok spasial, titik latih dikurangi sehingga jumlahnya sebanding dengan luas kelas, lalu tiga cara dibandingkan:
+Data latihan ini seimbang, tetapi di kebun keadaan seperti itu jarang terjadi. Bila titik disebar acak, jumlah titik setiap kelas kira-kira sebanding dengan luasnya, sehingga datanya menjadi tidak seimbang (*imbalanced data*). Kelas yang sempit hanya memperoleh sedikit titik dan model cenderung mengabaikannya. C5 menirukan keadaan itu. Pada setiap lipatan blok spasial, titik latih dikurangi sehingga jumlahnya sebanding dengan luas kelas, lalu tiga cara dibandingkan:
 
 1. **Tanpa penanganan**, yaitu model dilatih apa adanya.
-2. **Bobot kelas**, yaitu kesalahan pada kelas yang sedikit titiknya diberi bobot lebih besar. Pada CatBoost, `auto_class_weights='Balanced'` memberi setiap kelas bobot sebesar jumlah titik kelas terbanyak dibagi jumlah titik kelas itu.
-3. **SMOTE-NC**, yaitu titik sintetis ditambahkan pada kelas yang sedikit dengan menginterpolasi antara sebuah titik dan tetangganya di ruang kovariat (Chawla et al., 2002), memakai pustaka imbalanced-learn (Lemaître et al., 2017). Akhiran NC menandakan bahwa kovariat kategorik ikut ditangani, yaitu titik sintetis mengambil kategori yang paling sering muncul di antara tetangganya.
+2. **Bobot kelas** (*class weighting*), yaitu kesalahan pada kelas yang sedikit titiknya diberi bobot lebih besar. Pada CatBoost, `auto_class_weights='Balanced'` memberi setiap kelas bobot sebesar jumlah titik kelas terbanyak dibagi jumlah titik kelas itu.
+3. **SMOTE-NC** (*Synthetic Minority Over-sampling Technique–Nominal Continuous*), yaitu titik sintetis (*synthetic samples*) ditambahkan pada kelas yang sedikit dengan menginterpolasi antara sebuah titik dan tetangganya di ruang kovariat (Chawla et al., 2002), memakai pustaka imbalanced-learn (Lemaître et al., 2017). Akhiran NC menandakan bahwa kovariat kategorik ikut ditangani, yaitu titik sintetis mengambil kategori yang paling sering muncul di antara tetangganya.
 
-Kedua penanganan hanya diterapkan pada data latih setiap lipatan. Bila titik sintetis dibuat sebelum data dibagi, informasi dari titik uji ikut masuk ke data latih dan akurasinya menjadi semu. Metode SMOGN sering disebut dalam konteks yang sama, tetapi metode itu dirancang untuk sasaran kontinu yang nilai ekstremnya jarang, misalnya C-organik yang sangat tinggi (Branco et al., 2017). Untuk sasaran berupa kelas seperti tutupan material, padanannya adalah SMOTE.
+Kedua penanganan hanya diterapkan pada data latih setiap lipatan. Bila titik sintetis dibuat sebelum data dibagi, informasi dari titik uji ikut masuk ke data latih (*data leakage*) dan akurasinya menjadi semu. Metode SMOGN (*SMOTE for regression with Gaussian noise*) sering disebut dalam konteks yang sama, tetapi metode itu dirancang untuk sasaran kontinu yang nilai ekstremnya jarang, misalnya C-organik yang sangat tinggi (Branco et al., 2017). Untuk sasaran berupa kelas seperti tutupan material, padanannya adalah SMOTE.
 
 Tabel P5.10 Pengaruh Penanganan Data Tidak Seimbang pada Validasi Blok Spasial
 
-| **Cara** | **Akurasi** | **F1 makro** | **Recall kelas 1** | **Recall kelas 2** | **Recall kelas 3** | **Recall kelas 4** |
-| :-----: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Tanpa penanganan | 0,30 | 0,27 | 0,01 | 0,34 | 0,06 | 0,08 |
-| Bobot kelas | 0,33 | 0,31 | 0,03 | 0,27 | 0,17 | 0,19 |
-| SMOTE-NC | 0,32 | 0,31 | 0,01 | 0,24 | 0,18 | 0,21 |
+| **Ukuran** | **Tanpa penanganan** | **Bobot kelas** | **SMOTE-NC** |
+| :-----: | ---: | ---: | ---: |
+| Akurasi | 0,30 | 0,33 | 0,32 |
+| Kappa | 0,18 | 0,22 | 0,21 |
+| Presisi makro | 0,31 | 0,33 | 0,31 |
+| Recall makro | 0,30 | 0,33 | 0,32 |
+| F1 makro | 0,27 | 0,31 | 0,31 |
+| Recall kelas 1 | 0,01 | 0,03 | 0,01 |
+| Recall kelas 2 | 0,34 | 0,27 | 0,24 |
+| Recall kelas 3 | 0,06 | 0,17 | 0,18 |
+| Recall kelas 4 | 0,08 | 0,19 | 0,21 |
+| Recall kelas 5 | 0,40 | 0,36 | 0,36 |
+| Recall kelas 6 | 0,96 | 0,98 | 0,94 |
+| Recall kelas 7 | 0,23 | 0,32 | 0,32 |
 
 Sumber: Hasil uji coba, rata-rata tiga ulangan pengurangan titik
 
@@ -418,7 +451,7 @@ Gambar P5.16 Recall per kelas pada tiga cara penanganan data tidak seimbang
 
 Sumber: Hasil uji coba
 
-Penanganan menaikkan F1 makro dari 0,27 menjadi 0,31 dan menaikkan recall kelas yang berukuran sedang, misalnya kelas 3 dari 0,06 menjadi 0,17–0,18 dan kelas 4 dari 0,08 menjadi 0,19–0,21, dengan mengorbankan sebagian recall kelas yang luas. Recall kelas 2, kelas terluas, turun dari 0,34 menjadi 0,27 dengan bobot kelas dan 0,24 dengan SMOTE-NC. Untuk kelas 1, keduanya praktis tidak membantu. Setelah dikurangi, kelas ini kadang hanya memiliki satu titik latih dalam satu lipatan. Dari satu titik, SMOTE tidak dapat menginterpolasi apa pun, dan bobot sebesar apa pun hanya memperkuat satu contoh. Penyeimbangan tidak dapat menciptakan informasi yang tidak ada di dalam data.
+Penanganan menaikkan kappa dari 0,18 menjadi 0,21–0,22 dan F1 makro dari 0,27 menjadi 0,31. Recall kelas yang berukuran sedang juga naik, misalnya kelas 3 dari 0,06 menjadi 0,17–0,18, kelas 4 dari 0,08 menjadi 0,19–0,21, dan kelas 7 dari 0,23 menjadi 0,32, dengan mengorbankan sebagian recall kelas yang luas. Recall kelas 2, kelas terluas, turun dari 0,34 menjadi 0,27 dengan bobot kelas dan 0,24 dengan SMOTE-NC, sedangkan recall kelas 5, kelas terluas kedua, turun dari 0,40 menjadi 0,36. Untuk kelas 1, keduanya praktis tidak membantu. Setelah dikurangi, kelas ini kadang hanya memiliki satu titik latih dalam satu lipatan. Dari satu titik, SMOTE tidak dapat menginterpolasi apa pun, dan bobot sebesar apa pun hanya memperkuat satu contoh. Penyeimbangan tidak dapat menciptakan informasi yang tidak ada di dalam data.
 
 Penyeimbangan juga mengubah luas kelas pada peta, seperti terlihat pada Tabel P5.11.
 
@@ -442,9 +475,36 @@ Model yang dilatih dari sampel sebanding luas tanpa penanganan memperluas kelas 
 
 Jalankan sel C6 sampai C9.
 
+C6 diawali dengan penilaian ketelitian (*accuracy assessment*) model akhir, yaitu CatBoost dengan 12 kovariat terpilih. Ketelitian sebuah peta tidak dapat dinilai dari titik yang dipakai untuk melatih modelnya, sehingga yang dilaporkan adalah hasil validasi blok spasial dengan kovariat dan pengaturan yang sama. Inilah penilaian yang lazim menyertai sebuah peta kelas, yaitu matriks kebingungan, akurasi pembuat dan akurasi pengguna setiap kelas, serta ukuran keseluruhannya (Congalton, 1991).
+
+![](../data/praktik-5/hasil-contoh/matriks_kebingungan_model_akhir.png)
+
+Gambar P5.17 Matriks kebingungan model akhir pada validasi blok spasial
+
+Sumber: Hasil uji coba
+
+Tabel P5.12 Ketelitian Model Akhir per Kelas pada Validasi Blok Spasial
+
+| **Kode** | **Material** | **Recall** | **Presisi** | **F1** |
+| :---: | :-----: | ---: | ---: | ---: |
+| 1 | Breksi andesit sisipan diorit | 0,43 | 0,45 | 0,44 |
+| 2 | Breksi andesit teralterasi | 0,17 | 0,18 | 0,17 |
+| 3 | Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh | 0,23 | 0,35 | 0,28 |
+| 4 | Breksi vulkanik | 0,23 | 0,23 | 0,23 |
+| 5 | Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit | 0,23 | 0,23 | 0,23 |
+| 6 | Endapan Sumbing Muda dan endapan material longsor | 1,00 | 0,88 | 0,94 |
+| 7 | Tuff pasiran | 0,47 | 0,37 | 0,41 |
+|  | Rata-rata makro | 0,40 | 0,38 | 0,39 |
+
+Sumber: Hasil uji coba, CatBoost dengan 12 kovariat terpilih; recall setara dengan *producer's accuracy* dan presisi setara dengan *user's accuracy*; tersimpan di `laporan_per_kelas_model_akhir.csv`
+
+Secara keseluruhan, model akhir mencapai akurasi 0,40, kappa 0,29, presisi makro 0,38, recall makro 0,40, dan F1 makro 0,39. Angka ini sedikit optimistis karena kovariatnya dipilih dengan lipatan yang sama, sedangkan validasi silang bersarang pada Tahap 5 memberi akurasi 0,37. Matriks pada Gambar P5.17 juga memperlihatkan arah kesalahannya. Seluruh 30 titik kelas 6 ditebak benar, sehingga akurasi pembuatnya 1,00, tetapi 4 dari 34 titik yang ditebak sebagai kelas 6 sebenarnya kelas 3 dan kelas 4, sehingga akurasi penggunanya 0,88. Kelas 7 paling sering ditebak, yaitu 38 kali, karena 9 titik kelas 5 dan 8 titik kelas 4 ikut masuk ke kelas itu. Akibatnya, akurasi pengguna kelas 7 (0,37) lebih rendah daripada akurasi pembuatnya (0,47). Sebaliknya, kelas 3 hanya ditebak 20 kali, sehingga akurasi penggunanya (0,35) lebih tinggi daripada akurasi pembuatnya (0,23). Akurasi pengguna menjawab seberapa sering label pada peta sesuai dengan acuannya, sedangkan akurasi pembuat menjawab seberapa lengkap suatu kelas tertangkap oleh peta. Pengguna peta memerlukan keduanya.
+
+Peta dibuat dengan melatih model yang sama pada seluruh 210 titik, lalu menerapkannya ke setiap piksel.
+
 ![](../data/praktik-5/hasil-contoh/peta_prediksi_material.png)
 
-Gambar P5.17 Peta acuan dan peta prediksi tutupan material
+Gambar P5.18 Peta acuan dan peta prediksi tutupan material
 
 Sumber: Hasil uji coba; peta acuan dari Malik (2017); prediksi model latihan, bukan peta bahan induk yang tervalidasi
 
@@ -453,9 +513,9 @@ Empat pemeriksaan berikut lebih penting daripada tampilan petanya:
 1. **Kesesuaian dengan peta acuan**, yaitu 46,1% piksel prediksi sama dengan peta acuan. Kelas 6 paling sesuai, dengan 89,6% luasnya diprediksi benar, sedangkan kelas 2 hanya 25,9%. Angka ini bukan validasi independen, karena titik latih diambil dari peta yang sama, tetapi menunjukkan seberapa jauh model mereproduksi peta itu di antara titik-titiknya.
 2. **Luas setiap kelas**, yaitu kelas 1 diprediksi seluas 30,2 ha padahal pada peta acuan hanya 9,7 ha, sedangkan kelas 2 hanya 39,2 ha dari 75,5 ha. Model akhir dilatih dengan 30 titik per kelas, sehingga inilah sisi lain dari persoalan pada Tahap 6.
 3. **Tekstur peta**, yaitu peta acuan berupa poligon utuh hasil delineasi, sedangkan peta prediksi berbintik karena setiap piksel ditebak sendiri-sendiri. Bintik itu bukan informasi baru tentang batuan, melainkan tanda ketidakpastian model.
-4. **Peluang**, yaitu rata-rata peluang kelas tertinggi di seluruh peta 0,51, dan hanya 17,3% piksel yang memiliki peluang ≥ 0,7. Kejujuran peluang itu diperiksa pada Tabel P5.12.
+4. **Peluang** (*class probability*), yaitu rata-rata peluang kelas tertinggi di seluruh peta 0,51, dan hanya 17,3% piksel yang memiliki peluang ≥ 0,7. Kejujuran peluang itu diperiksa pada Tabel P5.13.
 
-Tabel P5.12 Peluang Kelas Tertinggi dan Proporsi Tebakan yang Benar
+Tabel P5.13 Peluang Kelas Tertinggi dan Proporsi Tebakan yang Benar
 
 | **Peluang kelas tertinggi** | **Jumlah titik** | **Proporsi benar** |
 | :---: | ---: | ---: |
@@ -466,25 +526,27 @@ Tabel P5.12 Peluang Kelas Tertinggi dan Proporsi Tebakan yang Benar
 
 Sumber: Hasil uji coba, prediksi validasi blok spasial dengan kovariat terpilih
 
-Titik yang diprediksi dengan peluang di atas 0,7 benar pada 80% kasus, sedangkan titik dengan peluang yang lebih rendah hanya benar pada 15–38% kasus. Jadi, peta peluang dapat dipakai untuk memisahkan bagian peta yang dapat dipegang dari bagian yang sebaiknya diperiksa di lapangan. Peluang dari model *boosting* belum tentu terkalibrasi sempurna, sehingga pemeriksaan seperti ini perlu diulang setiap kali model berubah.
+Titik yang diprediksi dengan peluang di atas 0,7 benar pada 80% kasus, sedangkan titik dengan peluang yang lebih rendah hanya benar pada 15–38% kasus. Jadi, peta peluang dapat dipakai untuk memisahkan bagian peta yang dapat dipegang dari bagian yang sebaiknya diperiksa di lapangan. Peluang dari model *boosting* belum tentu terkalibrasi sempurna (*well-calibrated*), sehingga pemeriksaan seperti ini perlu diulang setiap kali model berubah.
+
+Peta pada Gambar P5.19 menampilkan peluang kelas tertinggi bersama entropi (*entropy*), yang meringkas sebaran peluang ke semua kelas. Entropi 0 berarti model yakin penuh pada satu kelas, sedangkan entropi 1 berarti ketujuh kelas sama mungkin.
 
 ![](../data/praktik-5/hasil-contoh/peta_peluang_entropi.png)
 
-Gambar P5.18 Peluang kelas tertinggi dan entropi peluang
+Gambar P5.19 Peluang kelas tertinggi dan entropi peluang
 
 Sumber: Hasil uji coba
 
-Sel C8 menghitung wilayah keberlakuan model dengan kovariat yang dibobot menurut kepentingannya. Pada uji coba, 97,8% piksel berada di dalam AOA dengan ambang DI 0,31. Hasil ini perlu dibaca bersama Tabel P5.6. Hampir semua piksel memiliki kombinasi kovariat yang mirip dengan titik latih, tetapi validasi zona menunjukkan bahwa model hampir gagal di wilayah yang belum dilihatnya. AOA hanya memeriksa kemiripan kovariat, sehingga tidak dapat mendeteksi keadaan ketika nilai kovariat yang sama, misalnya ketinggian yang sama, ditempati material yang berbeda di bagian Sub-DAS yang berbeda.
+Sel C8 menghitung wilayah keberlakuan model (*area of applicability*, AOA; Meyer & Pebesma, 2021) dari indeks ketidakmiripan (*dissimilarity index*, DI), yaitu jarak setiap piksel ke titik latih terdekat dalam ruang kovariat yang dibobot menurut kepentingannya. Pada uji coba, 97,8% piksel berada di dalam AOA dengan ambang DI 0,31. Hasil ini perlu dibaca bersama Tabel P5.6. Hampir semua piksel memiliki kombinasi kovariat yang mirip dengan titik latih, tetapi validasi zona menunjukkan bahwa model hampir gagal di wilayah yang belum dilihatnya. AOA hanya memeriksa kemiripan kovariat, sehingga tidak dapat mendeteksi keadaan ketika nilai kovariat yang sama, misalnya ketinggian yang sama, ditempati material yang berbeda di bagian Sub-DAS yang berbeda.
 
-Sel C9 memetakan kesesuaian prediksi dengan peta acuan, bersama titik yang salah pada validasi blok spasial. Dari 210 titik, 127 titik salah. Kesalahan terbanyak terjadi pada kelas 2 (25 dari 30 titik), disusul kelas 3, kelas 4, dan kelas 5 yang masing-masing salah pada 23 titik, sedangkan seluruh titik kelas 6 benar.
+Sel C9 memetakan kesesuaian prediksi dengan peta acuan (*agreement map*), bersama titik yang salah pada validasi blok spasial. Dari 210 titik, 127 titik salah, sama dengan jumlah titik di luar diagonal matriks pada Gambar P5.17. Kesalahan terbanyak terjadi pada kelas 2 (25 dari 30 titik), disusul kelas 3, kelas 4, dan kelas 5 yang masing-masing salah pada 23 titik, sedangkan seluruh titik kelas 6 benar.
 
 ![](../data/praktik-5/hasil-contoh/kesesuaian_dan_kesalahan.png)
 
-Gambar P5.19 Kesesuaian prediksi dengan peta acuan dan titik yang salah pada validasi blok spasial
+Gambar P5.20 Kesesuaian prediksi dengan peta acuan dan titik yang salah pada validasi blok spasial
 
 Sumber: Hasil uji coba
 
-**Titik periksa.** Folder `hasil/` berisi `prediksi_material.tif`, `peluang_maks_material.tif`, `entropi_material.tif`, `di_material.tif`, `aoa_material.tif`, dan `kesesuaian_material.tif`.
+**Titik periksa.** Folder `hasil/` berisi `matriks_kebingungan_model_akhir.png`, `laporan_per_kelas_model_akhir.csv`, `prediksi_material.tif`, `peluang_maks_material.tif`, `entropi_material.tif`, `di_material.tif`, `aoa_material.tif`, dan `kesesuaian_material.tif`.
 
 ## Tahap 8: Menampilkan Hasil di QGIS
 
@@ -493,25 +555,25 @@ Sumber: Hasil uji coba
 
 ![](../screenshots/praktik-5/11_peta_prediksi_material_dengan_smu.png)
 
-Gambar P5.20 Prediksi tutupan material dengan batas SMU dan titik sampel
+Gambar P5.21 Prediksi tutupan material dengan batas SMU dan titik sampel
 
 Sumber: Tangkapan layar uji coba; prediksi model latihan, bukan peta bahan induk yang tervalidasi
 
 ![](../screenshots/praktik-5/12_peta_peluang_maks.png)
 
-Gambar P5.21 Peluang kelas tertinggi dengan batas SMU dan titik sampel
+Gambar P5.22 Peluang kelas tertinggi dengan batas SMU dan titik sampel
 
 Sumber: Tangkapan layar uji coba
 
 ![](../screenshots/praktik-5/13_peta_kesesuaian.png)
 
-Gambar P5.22 Kesesuaian prediksi dengan peta acuan, dengan hijau untuk piksel yang sama dan jingga untuk piksel yang berbeda
+Gambar P5.23 Kesesuaian prediksi dengan peta acuan, dengan hijau untuk piksel yang sama dan jingga untuk piksel yang berbeda
 
 Sumber: Tangkapan layar uji coba
 
 ![](../screenshots/praktik-5/14_peta_aoa.png)
 
-Gambar P5.23 Wilayah keberlakuan model, dengan merah menandai piksel di luar AOA
+Gambar P5.24 Wilayah keberlakuan model, dengan merah menandai piksel di luar AOA
 
 Sumber: Tangkapan layar uji coba
 
@@ -519,7 +581,7 @@ Sumber: Tangkapan layar uji coba
 
 ![](../screenshots/praktik-5/15_dialog_zonal_histogram.png)
 
-Gambar P5.24 Dialog Zonal Histogram
+Gambar P5.25 Dialog Zonal Histogram
 
 Sumber: Tangkapan layar uji coba
 
@@ -527,11 +589,11 @@ Sumber: Tangkapan layar uji coba
 
 ![](../screenshots/praktik-5/16_tabel_komposisi_smu.png)
 
-Gambar P5.25 Jumlah piksel setiap kelas material per poligon SMU pada tabel atribut
+Gambar P5.26 Jumlah piksel setiap kelas material per poligon SMU pada tabel atribut
 
 Sumber: Tangkapan layar uji coba
 
-Tabel P5.13 Komposisi Tutupan Material Prediksi menurut Bentuklahan pada Peta SMU Contoh (%)
+Tabel P5.14 Komposisi Tutupan Material Prediksi menurut Bentuklahan pada Peta SMU Contoh (%)
 
 | **Bentuklahan pada peta SMU** | **Luas (ha)** | **1** | **2** | **3** | **4** | **5** | **6** | **7** |
 | :-----: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -563,7 +625,7 @@ Pilihan algoritme juga perlu ditempatkan secara wajar. CatBoost tidak lebih teli
 
 Hasil validasi zona patut mendapat perhatian khusus. Pada validasi acak dan blok spasial, model jauh lebih baik daripada pembanding sederhana, tetapi pada zona yang belum dilihatnya akurasinya hampir sama dengan menebak. Salah satu kemungkinan penjelasannya, ketinggian sebagai kovariat terpenting lebih banyak bekerja sebagai penanda letak di dalam Sub-DAS daripada sebagai penjelas sifat batuan yang berlaku di mana saja. Meyer et al. (2019) menunjukkan bahwa kovariat seperti ini dapat membuat model tampak baik dalam mereproduksi data, tetapi buruk dalam prediksi spasial. Bagi perkebunan, artinya model yang dilatih di satu kebun belum tentu berlaku di kebun lain, dan klaim seperti itu harus dibuktikan dengan validasi pada wilayah yang terpisah.
 
-Sebelum memakai peta kelas hasil DSM, tanyakan selalu hal-hal berikut. Dari mana label kelasnya, dari pengamatan lapangan atau dari peta lain? Apakah ketelitiannya dinilai dengan data yang terpisah secara spasial? Bagaimana recall dan presisi setiap kelas, bukan hanya akurasi keseluruhannya? Berapa jumlah sampel setiap kelas, dan apa akibatnya pada luas kelas di peta? Mana peta peluangnya?
+Sebelum memakai peta kelas hasil DSM, tanyakan selalu hal-hal berikut. Dari mana label kelasnya, dari pengamatan lapangan atau dari peta lain? Apakah ketelitiannya dinilai dengan data yang terpisah secara spasial? Bagaimana akurasi pembuat dan akurasi pengguna setiap kelas, bukan hanya akurasi keseluruhannya? Berapa jumlah sampel setiap kelas, dan apa akibatnya pada luas kelas di peta? Mana peta peluangnya?
 
 ## Jika Tertinggal
 
@@ -576,6 +638,10 @@ Badan Informasi Geospasial. (2026). *Info Data Demnas* [Halaman portal]. Ina-Geo
 Branco, P., Torgo, L., & Ribeiro, R. P. (2017). SMOGN: A pre-processing approach for imbalanced regression. *Proceedings of Machine Learning Research*, *74*, 36–50.
 
 Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357.
+
+Cohen, J. (1960). A coefficient of agreement for nominal scales. *Educational and Psychological Measurement*, *20*(1), 37–46.
+
+Congalton, R. G. (1991). A review of assessing the accuracy of classifications of remotely sensed data. *Remote Sensing of Environment*, *37*(1), 35–46.
 
 Fatmawati, N. D. (2026). *Evaluasi pendekatan SCORPAN dalam prediksi spasial fraksi tekstur tanah pada bahan induk hasil proses alterasi di Sub-DAS Bompon* [Tesis magister, Universitas Gadjah Mada].
 

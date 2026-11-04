@@ -74,24 +74,26 @@ P3 = [
     md("""
     # Praktik 3. Dari Spektrum Pantulan ke Komposisi Tekstur Tanah
 
-    ASD FieldSpec 4 merekam **spektrum pantulan**, bukan nilai sifat tanah. Nilai sifat tanah baru diperoleh setelah spektrum dihubungkan dengan hasil laboratorium melalui model kalibrasi. Notebook ini menelusuri jalan tersebut untuk **tekstur tanah lapisan atas**, yaitu persentase lempung, debu, dan pasir. Ketiganya adalah komposisi: jumlahnya selalu 100%, sehingga prediksinya pun harus berjumlah 100%. Karena itu, sasaran diubah dulu dengan transformasi log-rasio isometrik (*isometric log-ratio*, ILR).
+    ASD FieldSpec 4 merekam **spektrum pantulan** (*reflectance spectrum*), bukan nilai sifat tanah. Nilai sifat tanah baru diperoleh setelah spektrum dihubungkan dengan hasil laboratorium melalui model kalibrasi (*calibration model*). Notebook ini menelusuri jalan tersebut untuk **tekstur tanah lapisan atas** (*topsoil texture*), yaitu persentase lempung (*clay*), debu (*silt*), dan pasir (*sand*). Ketiganya adalah data komposisi (*compositional data*): jumlahnya selalu 100%, sehingga prediksinya pun harus berjumlah 100%. Karena itu, sasaran diubah dulu dengan transformasi log-rasio isometrik (*isometric log-ratio*, ILR).
 
-    Alurnya: membaca spektrum, mengenali fitur serapan, mencoba lima praolah, melatih *Partial Least Squares Regression* (PLSR) dan *random forest*, lalu menilai hasilnya per fraksi. Seluruh notebook selesai dalam satu sampai dua menit.
+    Alurnya: membaca spektrum, mengenali fitur serapan (*absorption feature*), mencoba lima praolah (*preprocessing*), melatih *Partial Least Squares Regression* (PLSR) dan *random forest*, lalu menilai hasilnya per fraksi. Seluruh notebook selesai dalam satu sampai dua menit.
 
     Pegangan membaca notebook: jalankan sel dari atas ke bawah dengan **Shift + Enter**, lalu baca keluarannya sebelum lanjut. Rujukan konsep ada di Modul 7, Gambar 7.3 dan 7.4.
 
-    **Catatan data.** Pustaka ini merupakan hasil pengujian sampel tanah dari Site Gunung Madu Plantation (GMP), Lampung, jadi bukan dari Sub-DAS Bompon. Kode sampel `S3 L1` ditafsirkan sebagai profil S3 lapisan 1. Model dalam notebook ini dilatih dari tanah GMP dan dipakai untuk latihan. Untuk tanah dari tempat lain, hasilnya hanya pendekatan sampai diuji dengan sampel setempat (Modul 7).
+    **Catatan data.** Pustaka spektral (*spectral library*) ini merupakan hasil pengujian sampel tanah dari Site Gunung Madu Plantation (GMP), Lampung, jadi bukan dari Sub-DAS Bompon. Kode sampel `S3 L1` ditafsirkan sebagai profil S3 lapisan 1. Model dalam notebook ini dilatih dari tanah GMP dan dipakai untuk latihan. Untuk tanah dari tempat lain, hasilnya hanya pendekatan sampai diuji dengan sampel setempat (Modul 7).
     """),
     md("## 1. Menyiapkan lingkungan kerja"),
     kode(SIAPKAN.format(paket='numpy pandas scipy scikit-learn matplotlib', n=3)),
     kode("""
     import time
+    import joblib
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
     from scipy.signal import savgol_filter
     from scipy.stats import pearsonr
     from sklearn.cross_decomposition import PLSRegression
+    from sklearn.decomposition import PCA
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
     from sklearn.base import clone
@@ -102,7 +104,7 @@ P3 = [
     md("""
     ## 2. Membaca pustaka spektral dan memilih lapisan 1
 
-    Setiap baris adalah satu sampel. Kolom `w350` sampai `w2500` berisi pantulan pada setiap panjang gelombang, sedangkan kolom lainnya berisi hasil laboratorium. Setiap profil diambil sampai empat atau lima lapisan, dan lapisan dari profil yang sama saling mirip. Praktik ini hanya memakai **lapisan 1**, sehingga setiap profil diwakili satu sampel. Dengan begitu, pembagian acak latih dan uji tidak menempatkan lapisan dari profil yang sama di kedua sisi.
+    Setiap baris adalah satu sampel. Kolom `w350` sampai `w2500` berisi pantulan pada setiap panjang gelombang, sedangkan kolom lainnya berisi hasil laboratorium. Setiap profil diambil sampai empat atau lima lapisan, dan lapisan dari profil yang sama saling mirip. Praktik ini hanya memakai **lapisan 1**, sehingga setiap profil diwakili satu sampel. Dengan begitu, pembagian acak latih dan uji (*random train-test split*) tidak menempatkan lapisan dari profil yang sama di kedua sisi.
     """),
     kode("""
     data = pd.read_csv('spektra_visnir_gmp.csv.gz')
@@ -154,11 +156,11 @@ P3 = [
     plt.tight_layout(); plt.savefig('hasil/spektrum_lapisan1.png', dpi=150); plt.show()
     """),
     md("""
-    Spektrum yang halus seharusnya hampir tidak berubah antarkanal yang berdekatan. Di bawah 400 nm nilainya melompat-lompat, yang menandakan derau, sehingga pemodelan hanya memakai 400–2.500 nm. Lonjakan sempit di 1.000 nm dan 1.800 nm berada pada batas antardetektor alat.
+    Spektrum yang halus seharusnya hampir tidak berubah antarkanal yang berdekatan. Di bawah 400 nm nilainya melompat-lompat, yang menandakan derau (*noise*), sehingga pemodelan hanya memakai 400–2.500 nm. Lonjakan sempit di 1.000 nm dan 1.800 nm berada pada batas antardetektor alat.
 
     ## 4. Membaca fitur serapan
 
-    Lembah di sekitar 2.205 nm berasal dari kaolinit, mineral lempung yang umum pada tanah tropis yang telah lapuk lanjut (Modul 7). Sel berikut mengukur kedalaman serapan itu dengan garis kontinum sederhana antara 2.120 nm dan 2.250 nm, lalu membandingkannya dengan kadar lempung.
+    Lembah di sekitar 2.205 nm berasal dari kaolinit, mineral lempung yang umum pada tanah tropis yang telah lapuk lanjut (Modul 7). Sel berikut mengukur kedalaman serapan (*absorption depth*) itu dengan garis kontinum (*continuum*) sederhana antara 2.120 nm dan 2.250 nm, lalu membandingkannya dengan kadar lempung.
     """),
     kode("""
     def kedalaman_serapan(R, wl, kiri=2120, pusat=2205, kanan=2250):
@@ -177,7 +179,7 @@ P3 = [
     md("""
     ## 5. Membagi data latih dan uji
 
-    Data dibagi sekali secara acak: 80% untuk melatih dan 20% untuk menguji. Pembagian yang sama dipakai untuk semua praolah dan algoritme, sehingga perbandingannya adil. Data uji tidak disentuh sampai penilaian akhir.
+    Data dibagi sekali secara acak: 80% sebagai data latih (*training set*) dan 20% sebagai data uji (*test set*). Pembagian yang sama dipakai untuk semua praolah dan algoritme, sehingga perbandingannya adil. Data uji tidak disentuh sampai penilaian akhir.
     """),
     kode("""
     latih, uji = train_test_split(np.arange(len(data_l1)), test_size=0.2, random_state=42)
@@ -186,13 +188,13 @@ P3 = [
     md("""
     ## 6. Praolah spektrum
 
-    Sebagian besar keragaman spektrum disebabkan oleh ukuran partikel dan hamburan, bukan komposisi kimia. Lima praolah dicoba:
+    Sebagian besar keragaman spektrum disebabkan oleh ukuran partikel dan hamburan (*scattering*), bukan komposisi kimia. Lima praolah dicoba:
 
     1. **RAW**, yaitu pantulan apa adanya.
     2. **SNV** (*Standard Normal Variate*), yaitu setiap spektrum dikurangi rata-ratanya lalu dibagi simpangan bakunya (Barnes et al., 1989).
     3. **MSC** (*Multiplicative Scatter Correction*), yaitu setiap spektrum diregresikan terhadap spektrum acuan, lalu dikoreksi dengan potongan dan kemiringannya (Geladi et al., 1985). Spektrum acuan dihitung dari data latih saja.
-    4. **SG**, yaitu penghalusan Savitzky–Golay dengan jendela 11 kanal (Savitzky & Golay, 1964).
-    5. **SG-FD**, yaitu turunan pertama Savitzky–Golay, yang menonjolkan posisi fitur serapan.
+    4. **SG**, yaitu penghalusan Savitzky–Golay (*Savitzky–Golay smoothing*) dengan jendela 11 kanal (Savitzky & Golay, 1964).
+    5. **SG-FD**, yaitu turunan pertama (*first derivative*) Savitzky–Golay, yang menonjolkan posisi fitur serapan.
     """),
     kode("""
     def snv(A):
@@ -264,15 +266,15 @@ P3 = [
     md("""
     ## 8. Melatih PLSR dan *random forest* pada setiap praolah
 
-    Dua algoritme dibandingkan. **PLSR** adalah alat baku kemometrika yang meringkas ribuan kanal menjadi beberapa komponen laten (Wold et al., 2001). Jumlah komponennya dipilih dengan validasi silang 5 lipatan pada data latih. ***Random forest*** menggabungkan banyak pohon keputusan (Breiman, 2001) dan dilatih dengan pengaturan yang sama untuk semua praolah.
+    Dua algoritme dibandingkan. **PLSR** adalah alat baku kemometrika (*chemometrics*) yang meringkas ribuan kanal menjadi beberapa komponen laten (*latent variables*) (Wold et al., 2001). Jumlah komponennya dipilih dengan validasi silang (*cross-validation*) 5 lipatan (*fold*) pada data latih. ***Random forest*** menggabungkan banyak pohon keputusan (*decision trees*) (Breiman, 2001) dan dilatih dengan pengaturan yang sama untuk semua praolah.
 
     Untuk setiap kombinasi, dihitung dua hal. **RMSE validasi silang** dihitung hanya dari data latih, dengan 5 lipatan yang diulang 3 kali, dan dipakai untuk memilih kombinasi. **Ukuran pada data uji** dihitung per fraksi:
 
-    1. **R**, yaitu korelasi Pearson antara prediksi dan nilai laboratorium.
-    2. **R²**, yaitu bagian keragaman yang dijelaskan terhadap garis 1:1, sama dengan MEC pada Modul 8. Nilainya negatif jika model lebih buruk daripada menebak rata-rata.
-    3. **RMSE** dan **MAE**, yaitu besar galat dalam poin persen.
-    4. **nRMSE**, yaitu RMSE dibagi jangkauan nilai uji, dalam persen.
-    5. **MAPE**, yaitu rata-rata galat relatif. Nilai ini membesar pada fraksi yang kadarnya kecil seperti debu.
+    1. **R** (*Pearson correlation coefficient*), yaitu korelasi Pearson antara prediksi dan nilai laboratorium.
+    2. **R²** (*coefficient of determination*), yaitu bagian keragaman yang dijelaskan terhadap garis 1:1, sama dengan MEC pada Modul 8. Nilainya negatif jika model lebih buruk daripada menebak rata-rata.
+    3. **RMSE** (*root mean square error*) dan **MAE** (*mean absolute error*), yaitu besar galat dalam poin persen.
+    4. **nRMSE** (*normalized RMSE*), yaitu RMSE dibagi jangkauan nilai uji, dalam persen.
+    5. **MAPE** (*mean absolute percentage error*), yaitu rata-rata galat relatif. Nilai ini membesar pada fraksi yang kadarnya kecil seperti debu.
     """),
     kode("""
     def ukuran(y, p):
@@ -322,7 +324,7 @@ P3 = [
 
     ## 9. Memilih kombinasi tanpa mengintip data uji
 
-    Godaannya adalah memilih kombinasi dengan R² uji tertinggi, lalu melaporkan R² itu. Cara itu curang: data uji ikut dipakai untuk memilih, sehingga angkanya tidak lagi menggambarkan sampel yang benar-benar baru. Kombinasi dipilih dari RMSE validasi silang data latih, lalu dinilai sekali pada data uji.
+    Godaannya adalah memilih kombinasi dengan R² uji tertinggi, lalu melaporkan R² itu. Cara itu curang: data uji ikut dipakai untuk memilih (*data leakage*), sehingga angkanya tidak lagi menggambarkan sampel yang benar-benar baru. Kombinasi dipilih dari RMSE validasi silang data latih, lalu dinilai sekali pada data uji.
     """),
     kode("""
     kv = pd.DataFrame(ringkas).sort_values('RMSE validasi silang')
@@ -347,7 +349,7 @@ P3 = [
     md("""
     ## 10. Prediksi terhadap nilai laboratorium
 
-    Panel kiri sampai tengah membandingkan prediksi dengan nilai laboratorium untuk setiap fraksi. Panel kanan menempatkan setiap sampel uji pada segitiga tekstur: titik kosong adalah nilai laboratorium, titik isi adalah prediksi, dan garis menghubungkan keduanya.
+    Panel kiri sampai tengah membandingkan prediksi dengan nilai laboratorium untuk setiap fraksi. Panel kanan menempatkan setiap sampel uji pada segitiga tekstur (*soil texture triangle*): titik kosong adalah nilai laboratorium, titik isi adalah prediksi, dan garis menghubungkan keduanya.
     """),
     kode("""
     P = prediksi[TERPILIH]
@@ -400,7 +402,7 @@ P3 = [
     md("""
     ## 12. Wilayah spektrum mana yang dipakai model?
 
-    Kepentingan dihitung dengan permutasi per fraksi: nilai satu wilayah spektrum pada data uji diacak, lalu diukur kenaikan MAE setiap fraksi. Kanal yang bersebelahan hampir identik, sehingga mengacak satu kanal saja hampir tidak berpengaruh karena informasinya masih ada di kanal tetangganya. Karena itu yang diacak adalah **jendela 20 nm**, dengan 5 ulangan, dan satu prediksi dipakai untuk ketiga fraksi sekaligus. Perhitungan ini dibuat untuk praolah SG-FD pada kedua algoritme.
+    Kepentingan dihitung dengan permutasi (*permutation importance*) per fraksi: nilai satu wilayah spektrum pada data uji diacak, lalu diukur kenaikan MAE setiap fraksi. Kanal yang bersebelahan hampir identik, sehingga mengacak satu kanal saja hampir tidak berpengaruh karena informasinya masih ada di kanal tetangganya. Karena itu yang diacak adalah **jendela 20 nm** (*spectral window*), dengan 5 ulangan, dan satu prediksi dipakai untuk ketiga fraksi sekaligus. Perhitungan ini dibuat untuk praolah SG-FD pada kedua algoritme.
     """),
     kode("""
     LEBAR = 20
@@ -445,21 +447,74 @@ P3 = [
     md("""
     Batang biru menandai jendela yang, bila diacak, menaikkan galat, sedangkan batang merah berarti galat justru turun. Hasil dari 14 sampel uji ini masih kasar, sehingga yang patut diperhatikan adalah wilayah yang konsisten, misalnya di sekitar serapan air dan hidroksil (1.400 dan 1.900 nm) atau kaolinit (2.205 nm), bukan urutan jendela satu per satu.
 
-    ## 13. Memakai model pada spektrum baru
+    ## 13. Memakai model untuk sampel tanah baru
 
-    Inilah yang terjadi setelah demonstrasi alat: spektrum baru diberi praolah **yang sama**, lalu dimasukkan ke model. Dua sampel lapisan 1 yang tidak memiliki hasil laboratorium menjadi contoh yang pas. Model akhir dilatih ulang dengan seluruh 69 sampel memakai kombinasi terpilih. Nilai prediksinya tidak dapat diperiksa, tetapi jumlahnya pasti 100%.
+    Setelah model jadi, sampel tanah baru cukup diukur spektrumnya tanpa dianalisis di laboratorium. Ada lima langkah:
+
+    1. **Latih model akhir dan simpan**, yaitu model dilatih ulang dengan seluruh 69 sampel memakai kombinasi terpilih, lalu disimpan ke berkas bersama semua yang diperlukan untuk memakainya: nama praolah, spektrum acuan MSC, daftar panjang gelombang, dan ringkasan sebaran spektrum pustaka.
+    2. **Siapkan spektrum baru**, yaitu berkas CSV dengan kolom `sampel` dan `w350` sampai `w2500`, satu baris per sampel. Berkas `spektrum_sampel_baru.csv` adalah contohnya (*dummy*). Isinya 10 spektrum asli dari pustaka yang sama tanpa kolom laboratorium, yaitu dua sampel lapisan 1 yang memang tidak dianalisis dan delapan sampel lapisan 4 yang tidak dipakai melatih model.
+    3. **Prediksi**, yaitu spektrum baru diberi praolah yang **sama persis**, dimasukkan ke model, lalu hasilnya dikembalikan menjadi persentase.
+    4. **Periksa kemiripan dengan pustaka**, karena model hanya dapat dipercaya untuk spektrum yang mirip dengan spektrum yang dipakai melatihnya. Kemiripan diukur dengan jarak Mahalanobis (*Mahalanobis distance*) pada lima komponen utama spektrum pustaka (*principal component analysis*, PCA). Jarak itu dibagi jarak sampel pustaka yang terjauh, sehingga nilai di atas 1 berarti spektrum baru lebih asing daripada sampel pustaka mana pun.
+    5. **Uji sebagian sampel di laboratorium**, karena kemiripan spektrum tidak menjamin prediksi benar, seperti terlihat pada sel terakhir.
     """),
     kode("""
-    R_baru = tanpa_lab[kolom_spektrum].values[:, pilih]
     acuan_semua = R.mean(axis=0)
-    model_akhir = (PLSRegression(K_PLSR) if TERPILIH[1] == 'PLSR' else hutan()).fit(praolah(TERPILIH[0], R, acuan_semua), Z)
-    P_baru = dari_ilr(model_akhir.predict(praolah(TERPILIH[0], R_baru, acuan_semua)))
-    prediksi_baru = pd.DataFrame(P_baru, columns=['Lempung (%)', 'Debu (%)', 'Pasir (%)']).round(1)
-    prediksi_baru.insert(0, 'Sampel', tanpa_lab['sampel'])
-    prediksi_baru['Jumlah (%)'] = prediksi_baru.iloc[:, 1:].sum(axis=1).round(1)
-    prediksi_baru.to_csv('hasil/prediksi_sampel_tanpa_lab.csv', index=False)
-    print(f'Seluruh notebook selesai dalam {time.time() - MULAI:.0f} detik.')
+    A_semua = praolah(TERPILIH[0], R, acuan_semua)
+    model_akhir = (PLSRegression(K_PLSR) if TERPILIH[1] == 'PLSR' else hutan()).fit(A_semua, Z)
+    pca = PCA(n_components=5).fit(A_semua)
+    skor = pca.transform(A_semua)
+    paket = {'model': model_akhir, 'praolah': TERPILIH[0], 'acuan': acuan_semua, 'panjang_gel': wl, 'pca': pca,
+             'ambang': np.sqrt(((skor / np.sqrt(pca.explained_variance_)) ** 2).sum(axis=1)).max()}
+    joblib.dump(paket, 'hasil/model_tekstur_lapisan1.joblib')
+    print('Model disimpan:', TERPILIH, '| keragaman spektrum yang diringkas lima komponen utama:', round(pca.explained_variance_ratio_.sum(), 3))
+    """),
+    md("""
+    Fungsi berikut memuat model tersimpan, memeriksa kelengkapan kolom spektrum, memberi praolah yang sama, memprediksi, lalu menghitung jarak ke pustaka. Untuk sampel Anda sendiri, cukup ganti nama berkas pada `pd.read_csv`. Model tersimpan dapat dipakai lagi di lain waktu tanpa melatih ulang: jalankan bagian 1, sel fungsi praolah (bagian 6) dan ILR (bagian 7), lalu sel ini.
+    """),
+    kode("""
+    def prediksi_tekstur(tabel, berkas_model='hasil/model_tekstur_lapisan1.joblib'):
+        \"\"\"Prediksi lempung, debu, dan pasir untuk spektrum baru dengan model tersimpan.\"\"\"
+        paket = joblib.load(berkas_model)
+        kolom = [f'w{int(w)}' for w in paket['panjang_gel']]
+        kurang = [k for k in kolom if k not in tabel.columns]
+        if kurang:
+            raise ValueError(f'{len(kurang)} kolom spektrum tidak ada, misalnya {kurang[:3]}')
+        A = praolah(paket['praolah'], tabel[kolom].to_numpy(float), paket['acuan'])
+        hasil = pd.DataFrame(dari_ilr(paket['model'].predict(A)).round(1), columns=['Lempung (%)', 'Debu (%)', 'Pasir (%)'])
+        hasil.insert(0, 'Sampel', tabel['sampel'].values)
+        skor = paket['pca'].transform(A)
+        jarak = np.sqrt(((skor / np.sqrt(paket['pca'].explained_variance_)) ** 2).sum(axis=1)) / paket['ambang']
+        hasil['Jarak ke pustaka'] = jarak.round(2)
+        hasil['Mirip pustaka'] = np.where(jarak <= 1, 'ya', 'tidak')
+        return hasil
+
+    sampel_baru = pd.read_csv('spektrum_sampel_baru.csv')        # ganti dengan berkas spektrum Anda
+    prediksi_baru = prediksi_tekstur(sampel_baru)
+    prediksi_baru.to_csv('hasil/prediksi_sampel_baru.csv', index=False)
     prediksi_baru
+    """),
+    md("""
+    **Seberapa jauh model ini berlaku untuk tanah lain?** Delapan sampel lapisan 4 dalam berkas contoh sebenarnya memiliki hasil laboratorium di pustaka, demikian pula semua sampel lapisan 2 sampai 4. Sel berikut memperlakukan lapisan-lapisan bawah itu sebagai sampel baru, lalu membandingkan prediksinya dengan hasil laboratorium. Bias adalah rata-rata selisih prediksi terhadap nilai laboratorium, sehingga nilai positif berarti prediksi cenderung terlalu tinggi.
+    """),
+    kode("""
+    uji_lain = []
+    for lap in (2, 3, 4):
+        t = data[(data['lapisan'] == lap) & data[FRAKSI].notna().all(axis=1) & (data[FRAKSI] > 0).all(axis=1)]
+        Yt = t[FRAKSI].values / t[FRAKSI].sum(axis=1).values[:, None] * 100
+        h = prediksi_tekstur(t)
+        Pt = h[['Lempung (%)', 'Debu (%)', 'Pasir (%)']].values
+        baris_uji = {'Lapisan': lap, 'Sampel': len(t), 'Mirip pustaka (%)': 100 * (h['Mirip pustaka'] == 'ya').mean()}
+        for j, f in enumerate(FRAKSI):
+            baris_uji[f'RMSE {nama_id[f].lower()}'] = np.sqrt(((Pt[:, j] - Yt[:, j]) ** 2).mean())
+            baris_uji[f'Bias {nama_id[f].lower()}'] = (Pt[:, j] - Yt[:, j]).mean()
+        uji_lain.append(baris_uji)
+    uji_lain = pd.DataFrame(uji_lain).round(1)
+    uji_lain.to_csv('hasil/uji_lapisan_bawah.csv', index=False)
+    print(f'Seluruh notebook selesai dalam {time.time() - MULAI:.0f} detik.')
+    uji_lain
+    """),
+    md("""
+    Lapisan 2 tampak cukup baik, bahkan lebih baik daripada data uji lapisan 1 di bagian 9, karena lapisan 2 berasal dari profil yang lapisan 1-nya ikut melatih model. Pada lapisan yang lebih dalam, galat dan biasnya membesar. Pada lapisan 4, lempung cenderung diduga terlalu tinggi dan pasir terlalu rendah, padahal sebagian besar spektrumnya dinilai mirip dengan pustaka, dan kedelapan sampel lapisan 4 pada berkas contoh pun lolos pemeriksaan kemiripan. Pemeriksaan kemiripan membantu menyaring spektrum yang asing, tetapi tidak menjamin prediksi benar. Karena itu, setiap kali model dipakai untuk tanah dari kebun atau kedalaman lain, kirim sebagian sampel ke laboratorium. Bila prediksinya bias, tambahkan sampel setempat ke data kalibrasi. Modul 7 menyebut cara ini *spiking*, dan pendekatan rs-local menunjukkan bahwa 12–20 sampel lokal sudah dapat meningkatkan ketelitian dan kekokohan prediksi (England & Viscarra Rossel, 2018).
     """),
     md("""
     ## Yang dibawa ke diskusi
@@ -468,6 +523,7 @@ P3 = [
     2. Fraksi mana yang paling mudah dan paling sulit diduga dari spektrum, dan mengapa?
     3. Seberapa jauh satu angka R² dari 14 sampel uji dapat dipercaya, dilihat dari 20 pembagian acak?
     4. Wilayah spektrum mana yang dipakai model, dan apakah sesuai dengan fitur serapan pada Modul 7?
+    5. Bila model ini dipakai untuk sampel dari kebun Anda, berapa sampel yang perlu dikirim ke laboratorium untuk memeriksanya?
     """),
 ]
 
@@ -496,7 +552,7 @@ P5 = [
     md("""
     # Praktik 5. Machine Learning untuk Digital Soil Mapping
 
-    Notebook ini memetakan **tutupan material**, yaitu bahan induk tanah, di Sub-DAS Bompon dengan pembelajaran mesin. Sasarannya kategorik: tujuh kelas material pada peta Malik (2017), yang juga dipakai Fatmawati (2026) sebagai kovariat bahan induk. Alurnya mengikuti persamaan SCORPAN pada Modul 8: mempelajari hubungan antara kelas di titik sampel dan kondisi lingkungannya, menilai hubungan itu secara jujur, lalu menerapkannya ke seluruh piksel.
+    Notebook ini memetakan **tutupan material**, yaitu bahan induk tanah (*parent material*), di Sub-DAS Bompon dengan pembelajaran mesin (*machine learning*). Sasarannya kategorik: tujuh kelas material pada peta Malik (2017), yang juga dipakai Fatmawati (2026) sebagai kovariat bahan induk. Alurnya mengikuti persamaan SCORPAN pada Modul 8: mempelajari hubungan antara kelas di titik sampel dan kondisi lingkungannya, menilai hubungan itu secara jujur, lalu menerapkannya ke seluruh piksel.
 
     Model utama adalah **CatBoost** (Prokhorenkova et al., 2018), algoritme *gradient boosting* yang dapat membaca kovariat kategorik secara langsung. *Random forest* dipakai sebagai pembanding.
 
@@ -539,7 +595,7 @@ P5 = [
 
     ## A1. Membaca titik sampel dan kovariat
 
-    Berkas `titik_tutupan_material.csv` memuat 210 titik, 30 titik untuk setiap kelas. Titik ditempatkan di pusat sel grid kovariat 10 m, sekurang-kurangnya 15 m di dalam poligon kelasnya, dan disebar merata di setiap kelas. Kolom `subset` membagi titik menjadi 21 titik latih dan 9 titik uji per kelas. Folder `kovariat/` berisi satu GeoTIFF untuk setiap kovariat, sedangkan `material_acuan_10m.tif` adalah peta Malik (2017) pada grid yang sama, yang hanya dipakai sebagai pembanding.
+    Berkas `titik_tutupan_material.csv` memuat 210 titik, 30 titik untuk setiap kelas. Titik ditempatkan di pusat sel grid kovariat 10 m, sekurang-kurangnya 15 m di dalam poligon kelasnya, dan disebar merata di setiap kelas. Kolom `subset` membagi titik menjadi 21 titik latih (*training data*) dan 9 titik uji (*test data*) per kelas. Folder `kovariat/` berisi satu GeoTIFF untuk setiap kovariat, sedangkan `material_acuan_10m.tif` adalah peta Malik (2017) pada grid yang sama, yang hanya dipakai sebagai pembanding.
     """),
     kode("""
     titik = pd.read_csv('titik_tutupan_material.csv')
@@ -568,7 +624,7 @@ P5 = [
                   'Luas pada peta (ha)': luas_ha.round(1), 'Luas (%)': (100 * luas_ha / luas_ha.sum()).round(1)})
     """),
     md("""
-    Perhatikan bahwa setiap kelas memiliki 30 titik, padahal luasnya sangat berbeda. Kelas 1 hanya sekitar 3% wilayah, sedangkan kelas 2 sekitar seperempatnya. Akibat rancangan sampel seimbang ini dibahas pada Bagian C5 dan C6.
+    Perhatikan bahwa setiap kelas memiliki 30 titik, padahal luasnya sangat berbeda. Kelas 1 hanya sekitar 3% wilayah, sedangkan kelas 2 sekitar seperempatnya. Akibat rancangan sampel seimbang (*balanced sampling*) ini dibahas pada Bagian C5 dan C6.
 
     ## A2. Mengambil nilai kovariat di titik sampel
 
@@ -587,11 +643,14 @@ P5 = [
 
     Pakai pembagian yang sudah disiapkan di kolom `subset`: 147 titik latih dan 63 titik uji. Latih CatBoost dengan kovariat numerik saja, lalu bandingkan ketelitiannya pada data latih dan data uji.
 
-    **Akurasi keseluruhan** (*overall accuracy*) adalah proporsi titik yang kelasnya ditebak benar. Karena ada tujuh kelas dengan jumlah titik sama, menebak sembarang hanya memberi akurasi sekitar 1/7 = 0,14. **Kappa** menyatakan seberapa jauh akurasi melampaui kesepakatan yang terjadi karena kebetulan. **F1 makro** adalah rata-rata F1 ketujuh kelas, sehingga kelas yang selalu salah ikut menurunkan nilainya.
+    **Akurasi keseluruhan** (*overall accuracy*, OA) adalah proporsi titik yang kelasnya ditebak benar. Karena ada tujuh kelas dengan jumlah titik sama, menebak sembarang hanya memberi akurasi sekitar 1/7 = 0,14. **Kappa Cohen** (*Cohen's kappa*) menyatakan seberapa jauh akurasi melampaui kesepakatan yang terjadi karena kebetulan (*chance agreement*). **Presisi makro**, **recall makro**, dan **F1 makro** (*macro-averaged precision, recall, and F1-score*) adalah rata-rata presisi, recall, dan F1 ketujuh kelas, sehingga kelas yang selalu salah ikut menurunkan nilainya. Arti presisi dan recall setiap kelas dijelaskan pada Bagian C3.
     """),
     kode(f"""
     def ukuran(y, p):
-        return {{'Akurasi': accuracy_score(y, p), 'Kappa': cohen_kappa_score(y, p), 'F1 makro': f1_score(y, p, average='macro')}}
+        return {{'Akurasi': accuracy_score(y, p), 'Kappa': cohen_kappa_score(y, p),
+                'Presisi makro': precision_score(y, p, average='macro', zero_division=0),
+                'Recall makro': recall_score(y, p, average='macro', zero_division=0),
+                'F1 makro': f1_score(y, p, average='macro', zero_division=0)}}
 
     PENGATURAN_CATBOOST = {CATBOOST_P5}
 
@@ -605,7 +664,7 @@ P5 = [
                   'Data uji': ukuran(y[~latih], cb.predict(tabel.loc[~latih, numerik]).ravel())}}).T.round(2)
     """),
     md("""
-    **Diskusi.** Ketelitian pada data latih hampir selalu indah karena model menghafal. Hanya angka pada data uji yang boleh dibaca sebagai kemampuan model. Pembagian tunggal juga rapuh, karena hasilnya bergantung pada titik yang kebetulan terpilih sebagai data uji. Sel berikut mengulang pembagian 70/30 secara acak sebanyak 30 kali.
+    **Diskusi.** Ketelitian pada data latih hampir selalu indah karena model menghafal. Hanya angka pada data uji yang boleh dibaca sebagai kemampuan model. Pembagian tunggal (*single train-test split*) juga rapuh, karena hasilnya bergantung pada titik yang kebetulan terpilih sebagai data uji. Sel berikut mengulang pembagian 70/30 secara acak sebanyak 30 kali.
     """),
     kode("""
     hasil = []
@@ -650,7 +709,7 @@ P5 = [
     md("""
     ## B2. Korelasi Pearson antarkovariat
 
-    Kovariat yang sangat mirip membawa informasi yang hampir sama. Korelasi Pearson (r) mengukur kemiripan linear dua kovariat, dari −1 sampai 1. Korelasi dihitung dari seluruh piksel di dalam Sub-DAS, bukan dari 210 titik saja, agar stabil. Pasangan dengan |r| ≥ 0,8 dicatat di sini, tetapi belum dibuang. Kovariat mana yang dipertahankan dari setiap pasangan diputuskan pada Bagian C4, setelah tingkat kepentingannya bagi model diketahui.
+    Kovariat yang sangat mirip membawa informasi yang hampir sama. Korelasi Pearson (*Pearson correlation coefficient*, r) mengukur kemiripan linear dua kovariat, dari −1 sampai 1. Korelasi dihitung dari seluruh piksel di dalam Sub-DAS, bukan dari 210 titik saja, agar stabil. Pasangan dengan |r| ≥ 0,8 dicatat di sini, tetapi belum dibuang. Kovariat mana yang dipertahankan dari setiap pasangan diputuskan pada Bagian C4, setelah tingkat kepentingannya bagi model diketahui.
     """),
     kode("""
     piksel = pd.DataFrame(kubus[:, dalam].T, columns=nama_kov)
@@ -673,8 +732,8 @@ P5 = [
 
     Bentuklahan dan penggunaan lahan adalah kategori, bukan angka. Kode 1 sampai 6 pada `kat_bentuklahan` hanyalah nama, sehingga Dataran Koluvial (6) tidak "lebih besar" daripada Interfluve (1). Ada dua cara memasukkannya ke model:
 
-    1. **One-hot**, yaitu setiap kelas kategori menjadi kolom 0/1 tersendiri. Cara ini diperlukan oleh *random forest* di scikit-learn.
-    2. **Langsung sebagai kategori**, yaitu kolom berisi nama kelas dan model mengolahnya sendiri. Inilah keunggulan CatBoost. Kategori dengan sedikit nilai dikodekan *one-hot* di dalam model (parameter `one_hot_max_size`), sedangkan kategori dengan banyak nilai, misalnya kode blok kebun, diubah menjadi statistik sasaran berurutan (*ordered target statistics*) yang dirancang agar nilai sasaran tidak bocor ke dalam model (Prokhorenkova et al., 2018).
+    1. **One-hot** (*one-hot encoding*), yaitu setiap kelas kategori menjadi kolom 0/1 tersendiri. Cara ini diperlukan oleh *random forest* di scikit-learn.
+    2. **Langsung sebagai kategori** (*native categorical feature handling*), yaitu kolom berisi nama kelas dan model mengolahnya sendiri. Inilah keunggulan CatBoost. Kategori dengan sedikit nilai dikodekan *one-hot* di dalam model (parameter `one_hot_max_size`), sedangkan kategori dengan banyak nilai, misalnya kode blok kebun, diubah menjadi statistik sasaran berurutan (*ordered target statistics*) yang dirancang agar nilai sasaran tidak bocor ke dalam model (Prokhorenkova et al., 2018).
 
     Sel berikut menyiapkan kedua bentuk tabel dan memeriksa sebaran titik per kategori.
     """),
@@ -711,11 +770,11 @@ P5 = [
 
     ## C1. Skema validasi
 
-    Tiga skema dibandingkan:
+    Tiga skema validasi silang (*cross-validation*) dibandingkan:
 
-    1. **Acak**, yaitu titik dibagi acak ke dalam lima lipatan dengan jumlah per kelas yang seimbang.
-    2. **Blok spasial**, yaitu wilayah dibagi menjadi blok persegi 400 m dan setiap blok utuh masuk ke satu lipatan. Titik uji tidak memiliki tetangga dekat di data latih, tetapi kelas yang sama masih terwakili di blok lain.
-    3. **Zona**, yaitu titik dikelompokkan menjadi lima zona besar dengan *k-means*. Skema ini meniru penerapan model ke wilayah yang benar-benar baru, misalnya kebun tetangga.
+    1. **Acak** (*stratified random k-fold cross-validation*), yaitu titik dibagi acak ke dalam lima lipatan (*fold*) dengan jumlah per kelas yang seimbang.
+    2. **Blok spasial** (*spatial block cross-validation*), yaitu wilayah dibagi menjadi blok persegi 400 m dan setiap blok utuh masuk ke satu lipatan. Titik uji tidak memiliki tetangga dekat di data latih, tetapi kelas yang sama masih terwakili di blok lain.
+    3. **Zona** (*leave-cluster-out cross-validation*), yaitu titik dikelompokkan menjadi lima zona besar dengan *k-means*. Skema ini meniru penerapan model ke wilayah yang benar-benar baru, misalnya kebun tetangga.
 
     Rujukan konsepnya ada pada Modul 8, Gambar 8.2.
     """),
@@ -744,9 +803,9 @@ P5 = [
     md("""
     ## C2. Membandingkan model dengan pembanding sederhana
 
-    Model harus dibandingkan dengan sesuatu. Ada dua pembanding sederhana:
+    Model harus dibandingkan dengan sesuatu. Ada dua pembanding sederhana (*baseline*):
 
-    1. **Kelas terbanyak**, yaitu selalu menebak kelas yang paling banyak di data latih.
+    1. **Kelas terbanyak** (*majority class*), yaitu selalu menebak kelas yang paling banyak di data latih.
     2. **Kelas terbanyak per bentuklahan**, yaitu setiap bentuklahan diberi satu kelas material, seperti satuan pada peta konvensional.
 
     Setelah itu, *random forest* (dengan *one-hot*) dan CatBoost dilatih dengan ke-16 kovariat. Jika model yang rumit tidak mengalahkan pembanding sederhana, kerumitan itu belum memberi manfaat.
@@ -811,12 +870,12 @@ P5 = [
             baris.append({'Model': nama, 'Validasi': skema, **ukuran(y, hasil_cv[(nama, skema)][0])})
     metrik = pd.DataFrame(baris).round(2)
     metrik.to_csv('hasil/metrik_validasi_material.csv', index=False)
-    metrik.pivot(index='Model', columns='Validasi', values=['Akurasi', 'F1 makro']).loc[list(MODEL)]
+    metrik.set_index(['Model', 'Validasi']).loc[list(MODEL)]
     """),
     md("""
-    **Cara membaca.** Akurasi 0,14 setara dengan menebak sembarang. Karena jumlah titik per kelas sama, kappa di sini hanyalah skala lain dari akurasi, sehingga tabel ringkas di atas hanya menampilkan akurasi dan F1 makro; kappa tersimpan di `hasil/metrik_validasi_material.csv`. Bandingkan ketiga skema: selisih antara validasi acak dan blok spasial menunjukkan seberapa besar akurasi acak terbantu oleh titik tetangga, sedangkan skema zona menunjukkan apa yang terjadi bila model dipakai di wilayah yang belum pernah dilihatnya.
+    **Cara membaca.** Akurasi 0,14 setara dengan menebak sembarang. Karena jumlah titik per kelas sama, kappa di sini hanyalah skala lain dari akurasi, yaitu (akurasi − 1/7) / (1 − 1/7), dan recall makro persis sama dengan akurasi. Presisi makro dapat berbeda dari keduanya, karena turun bila model sering menebak sebuah kelas yang sebenarnya bukan kelas itu. Bandingkan ketiga skema: selisih antara validasi acak dan blok spasial menunjukkan seberapa besar akurasi acak terbantu oleh titik tetangga, sedangkan skema zona menunjukkan apa yang terjadi bila model dipakai di wilayah yang belum pernah dilihatnya.
 
-    **Apakah cara CatBoost mengodekan kategori berpengaruh?** Notebook ini memakai `one_hot_max_size=10`, sehingga kedua kovariat kategorik (6 dan 4 kelas) dikodekan *one-hot* di dalam CatBoost. Dengan nilai bawaannya, yaitu 2, CatBoost memakai statistik sasaran berurutan untuk keduanya. Sel berikut membandingkan kedua cara pada validasi blok spasial.
+    **Apakah cara CatBoost mengodekan kategori (*categorical encoding*) berpengaruh?** Notebook ini memakai `one_hot_max_size=10`, sehingga kedua kovariat kategorik (6 dan 4 kelas) dikodekan *one-hot* di dalam CatBoost. Dengan nilai bawaannya, yaitu 2, CatBoost memakai statistik sasaran berurutan untuk keduanya. Sel berikut membandingkan kedua cara pada validasi blok spasial.
     """),
     kode("""
     for nama, atur in [('one-hot di dalam CatBoost (one_hot_max_size=10)', {}), ('statistik sasaran (one_hot_max_size=2, bawaan)', {'one_hot_max_size': 2})]:
@@ -827,33 +886,44 @@ P5 = [
     md("""
     ## C3. Kelas mana yang tertukar?
 
-    Akurasi keseluruhan menyembunyikan perbedaan antarkelas. Matriks kebingungan (*confusion matrix*) menampilkan, untuk setiap kelas sebenarnya (baris), ke kelas mana titik-titiknya ditebak (kolom). **Recall** adalah proporsi titik suatu kelas yang ditebak benar, sedangkan **presisi** adalah proporsi tebakan suatu kelas yang memang benar. Hasil di bawah berasal dari CatBoost pada validasi blok spasial.
+    Akurasi keseluruhan menyembunyikan perbedaan antarkelas. Matriks kebingungan (*confusion matrix*, dalam penginderaan jauh juga disebut *error matrix*) menampilkan, untuk setiap kelas sebenarnya (baris), ke kelas mana titik-titiknya ditebak (kolom). Dari matriks itu dihitung tiga ukuran per kelas:
+
+    1. **Recall** (*recall* atau *sensitivity*), yaitu proporsi titik suatu kelas yang ditebak benar. Dalam penilaian ketelitian peta penginderaan jauh, ukuran ini disebut *producer's accuracy*, karena menyatakan seberapa lengkap pembuat peta menangkap kelas itu.
+    2. **Presisi** (*precision*), yaitu proporsi tebakan suatu kelas yang memang benar. Ukuran ini disebut *user's accuracy*, karena menyatakan seberapa besar peluang pengguna peta menemukan kelas itu di lapangan bila peta menyebutkannya.
+    3. **F1** (*F1-score*), yaitu rata-rata harmonik (*harmonic mean*) presisi dan recall.
+
+    Hasil di bawah berasal dari CatBoost dengan 16 kovariat pada validasi blok spasial.
     """),
     kode("""
+    def gambar_matriks(mk, judul, berkas):
+        fig, ax = plt.subplots(figsize=(4.8, 4.2))
+        ax.imshow(mk / mk.sum(axis=1, keepdims=True), cmap='Blues', vmin=0, vmax=1)
+        for i in range(len(KELAS)):
+            for j in range(len(KELAS)):
+                ax.text(j, i, mk[i, j], ha='center', va='center', fontsize=8, color='white' if mk[i, j] > 15 else 'black')
+        ax.set_xticks(range(len(KELAS)), KELAS.index); ax.set_yticks(range(len(KELAS)), KELAS.index)
+        ax.set(xlabel='Kelas tebakan', ylabel='Kelas sebenarnya', title=judul)
+        plt.tight_layout(); plt.savefig(berkas, dpi=150); plt.show()
+
+    def laporan_per_kelas(y, p):
+        return pd.DataFrame({'Material': KELAS, 'Titik': np.bincount(y, minlength=len(KELAS) + 1)[1:],
+                             "Recall (producer's accuracy)": recall_score(y, p, labels=KELAS.index, average=None, zero_division=0),
+                             "Presisi (user's accuracy)": precision_score(y, p, labels=KELAS.index, average=None, zero_division=0),
+                             'F1': f1_score(y, p, labels=KELAS.index, average=None, zero_division=0)}, index=KELAS.index).round(2)
+
     p_cb = hasil_cv[('CatBoost', 'Blok spasial')][0]
-    mk = confusion_matrix(y, p_cb, labels=KELAS.index)
-    fig, ax = plt.subplots(figsize=(4.8, 4.2))
-    ax.imshow(mk / mk.sum(axis=1, keepdims=True), cmap='Blues', vmin=0, vmax=1)
-    for i in range(len(KELAS)):
-        for j in range(len(KELAS)):
-            ax.text(j, i, mk[i, j], ha='center', va='center', fontsize=8, color='white' if mk[i, j] > 15 else 'black')
-    ax.set_xticks(range(len(KELAS)), KELAS.index); ax.set_yticks(range(len(KELAS)), KELAS.index)
-    ax.set(xlabel='Kelas tebakan', ylabel='Kelas sebenarnya', title='CatBoost, validasi blok spasial')
-    plt.tight_layout(); plt.savefig('hasil/matriks_kebingungan.png', dpi=150); plt.show()
-    pd.DataFrame({'Material': KELAS,
-                  'Recall': recall_score(y, p_cb, labels=KELAS.index, average=None),
-                  'Presisi': precision_score(y, p_cb, labels=KELAS.index, average=None, zero_division=0),
-                  'F1': f1_score(y, p_cb, labels=KELAS.index, average=None)}, index=KELAS.index).round(2)
+    gambar_matriks(confusion_matrix(y, p_cb, labels=KELAS.index), 'CatBoost, 16 kovariat, validasi blok spasial', 'hasil/matriks_kebingungan.png')
+    laporan_per_kelas(y, p_cb)
     """),
     md("""
     ## C4. Memilih kovariat: tingkat kepentingan dan korelasi Pearson
 
     Kovariat untuk model akhir dipilih dengan dua informasi:
 
-    1. **Tingkat kepentingan** (*variable importance*), dihitung dengan permutasi: nilai satu kovariat di data uji diacak, lalu diukur seberapa besar akurasi turun. Semakin besar penurunannya, semakin penting kovariat itu bagi model. Permutasi dilakukan pada lipatan blok spasial, yaitu pada data yang tidak dipakai melatih model, karena kepentingan yang dihitung dari data latih dapat memberi nilai tinggi pada kovariat yang hanya membantu model menghafal (Meyer et al., 2019).
+    1. **Tingkat kepentingan** (*variable importance*), dihitung dengan permutasi (*permutation importance*): nilai satu kovariat di data uji diacak, lalu diukur seberapa besar akurasi turun. Semakin besar penurunannya, semakin penting kovariat itu bagi model. Permutasi dilakukan pada lipatan blok spasial, yaitu pada data yang tidak dipakai melatih model, karena kepentingan yang dihitung dari data latih dapat memberi nilai tinggi pada kovariat yang hanya membantu model menghafal (Meyer et al., 2019).
     2. **Korelasi Pearson** dari Bagian B2, untuk menemukan kovariat yang saling menggantikan.
 
-    Sebagai perbandingan, ditampilkan pula kepentingan bawaan CatBoost (*PredictionValuesChange*), yang dihitung dari data latih.
+    Sebagai perbandingan, ditampilkan pula kepentingan bawaan CatBoost (*built-in feature importance*, PredictionValuesChange), yang dihitung dari data latih.
     """),
     kode("""
     def kepentingan_permutasi(model, X, y_uji, ulang=10, seed=0):
@@ -918,7 +988,7 @@ P5 = [
     pd.DataFrame(banding).round(2)
     """),
     md("""
-    **Catatan kejujuran.** Kovariat di atas dipilih memakai lipatan yang sama dengan yang dipakai untuk menilainya, sehingga angka "Kovariat terpilih" sedikit optimistis. Cara yang ketat adalah memilih kovariat di dalam setiap lipatan, hanya dari data latihnya (*nested*). Sel berikut melakukannya. Perhatikan juga apakah kovariat yang terpilih sama dari satu lipatan ke lipatan lain.
+    **Catatan kejujuran.** Kovariat di atas dipilih memakai lipatan yang sama dengan yang dipakai untuk menilainya, sehingga angka "Kovariat terpilih" sedikit optimistis. Cara yang ketat adalah memilih kovariat di dalam setiap lipatan, hanya dari data latihnya (*nested cross-validation*). Sel berikut melakukannya. Perhatikan juga apakah kovariat yang terpilih sama dari satu lipatan ke lipatan lain.
     """),
     kode("""
     p_nested, pilihan_per_lipatan = np.zeros(len(y), int), []
@@ -936,17 +1006,17 @@ P5 = [
         print(f'Lipatan {i}: {len(s)} kovariat, {s}')
     """),
     md("""
-    ## C5. Bagaimana jika datanya tidak seimbang?
+    ## C5. Bagaimana jika datanya tidak seimbang (*imbalanced data*)?
 
     Data latihan ini sengaja seimbang: setiap kelas memiliki 30 titik. Di lapangan keadaan itu jarang terjadi. Bila titik disebar acak di seluruh kebun, jumlah titik setiap kelas kira-kira sebanding dengan luasnya, sehingga kelas yang sempit hanya memperoleh sedikit titik. Model lalu cenderung mengabaikan kelas tersebut, karena salah menebaknya hampir tidak menurunkan akurasi keseluruhan.
 
     Sel berikut menirukan keadaan itu. Pada setiap lipatan blok spasial, titik latih dikurangi sehingga jumlahnya sebanding dengan luas kelas pada peta acuan, sedangkan data uji tidak diubah. Tiga cara dibandingkan:
 
     1. **Tanpa penanganan**.
-    2. **Bobot kelas**, yaitu kesalahan pada kelas yang sedikit titiknya diberi bobot lebih besar. CatBoost menyediakannya lewat `auto_class_weights='Balanced'`: bobot setiap kelas sama dengan jumlah titik kelas terbanyak dibagi jumlah titik kelas itu.
-    3. **SMOTE-NC**, yaitu titik sintetis dibuat untuk kelas yang sedikit dengan menginterpolasi antara sebuah titik dan tetangganya di ruang kovariat (Chawla et al., 2002). Akhiran NC (*nominal and continuous*) berarti kovariat kategorik ikut ditangani: titik sintetis mengambil kategori yang paling sering di antara tetangganya.
+    2. **Bobot kelas** (*class weighting*), yaitu kesalahan pada kelas yang sedikit titiknya diberi bobot lebih besar. CatBoost menyediakannya lewat `auto_class_weights='Balanced'`: bobot setiap kelas sama dengan jumlah titik kelas terbanyak dibagi jumlah titik kelas itu.
+    3. **SMOTE-NC** (*Synthetic Minority Over-sampling Technique–Nominal Continuous*), yaitu titik sintetis (*synthetic samples*) dibuat untuk kelas yang sedikit dengan menginterpolasi antara sebuah titik dan tetangganya di ruang kovariat (Chawla et al., 2002). Akhiran NC berarti kovariat kategorik ikut ditangani: titik sintetis mengambil kategori yang paling sering di antara tetangganya.
 
-    Penyeimbangan **hanya** dilakukan pada data latih setiap lipatan. Jika titik sintetis dibuat sebelum data dibagi, informasi dari titik uji ikut masuk ke data latih dan akurasinya menjadi semu. Untuk sasaran kontinu, misalnya nilai C-organik tinggi yang jarang dijumpai, padanannya adalah SMOGN (Branco et al., 2017).
+    Penyeimbangan (*resampling*) **hanya** dilakukan pada data latih setiap lipatan. Jika titik sintetis dibuat sebelum data dibagi, informasi dari titik uji ikut masuk ke data latih (*data leakage*) dan akurasinya menjadi semu. Untuk sasaran kontinu, misalnya nilai C-organik tinggi yang jarang dijumpai, padanannya adalah SMOGN (*SMOTE for regression with Gaussian noise*; Branco et al., 2017).
     """),
     kode("""
     porsi = luas_ha / luas_ha.max()
@@ -1018,7 +1088,18 @@ P5 = [
     md("""
     ## C6. Model akhir dan peta tutupan material
 
-    Model akhir adalah CatBoost dengan kovariat terpilih, dilatih dengan seluruh 210 titik. Setiap piksel memperoleh kelas dengan peluang tertinggi beserta nilai peluang itu.
+    Model akhir adalah CatBoost dengan kovariat terpilih. Ketelitiannya tidak dapat dinilai dari titik yang dipakai untuk melatihnya, sehingga yang dilaporkan adalah hasil validasi blok spasial dengan kovariat dan pengaturan yang sama (Bagian C4). Inilah penilaian ketelitian yang lazim menyertai sebuah peta kelas: matriks kebingungan, *producer's accuracy* dan *user's accuracy* setiap kelas, serta ukuran keseluruhannya.
+    """),
+    kode("""
+    p_akhir = hasil_terpilih['Blok spasial'][0]
+    gambar_matriks(confusion_matrix(y, p_akhir, labels=KELAS.index), 'Model akhir, validasi blok spasial', 'hasil/matriks_kebingungan_model_akhir.png')
+    laporan_akhir = laporan_per_kelas(y, p_akhir)
+    laporan_akhir.to_csv('hasil/laporan_per_kelas_model_akhir.csv')
+    print('Ukuran keseluruhan:', {k: round(v, 2) for k, v in ukuran(y, p_akhir).items()})
+    laporan_akhir
+    """),
+    md("""
+    Peta dibuat dengan melatih model yang sama pada seluruh 210 titik. Setiap piksel memperoleh kelas dengan peluang tertinggi beserta nilai peluang itu.
     """),
     kode("""
     model_akhir = pilihan['Sampel seimbang (30 per kelas)']
@@ -1064,7 +1145,7 @@ P5 = [
 
     ## C7. Seberapa yakin model, dan apakah keyakinannya dapat dipercaya?
 
-    Untuk sasaran kategorik, ketidakpastian dinyatakan dengan peluang. Peluang tertinggi yang rendah berarti model ragu di antara beberapa kelas. Entropi meringkas sebaran peluang ke semua kelas: 0 berarti model yakin penuh pada satu kelas, sedangkan 1 berarti semua kelas sama mungkin. Peluang itu baru berguna bila jujur, yaitu bila titik yang diprediksi dengan peluang tinggi memang lebih sering benar. Sel berikut memeriksanya dengan prediksi validasi blok spasial.
+    Untuk sasaran kategorik, ketidakpastian (*uncertainty*) dinyatakan dengan peluang kelas (*class probability*). Peluang tertinggi yang rendah berarti model ragu di antara beberapa kelas. Entropi (*entropy*) meringkas sebaran peluang ke semua kelas: 0 berarti model yakin penuh pada satu kelas, sedangkan 1 berarti semua kelas sama mungkin. Peluang itu baru berguna bila jujur atau terkalibrasi (*well-calibrated*), yaitu bila titik yang diprediksi dengan peluang tinggi memang lebih sering benar. Sel berikut memeriksanya dengan prediksi validasi blok spasial.
     """),
     kode("""
     p_t, peluang_t, model_t = hasil_terpilih['Blok spasial']
@@ -1081,9 +1162,9 @@ P5 = [
     print(f'Rata-rata peluang tertinggi {peluang_maks.mean():.2f} | piksel dengan peluang >= 0,7: {100 * (peluang_maks >= .7).mean():.1f}%')
     """),
     md("""
-    ## C8. Wilayah keberlakuan model
+    ## C8. Wilayah keberlakuan model (*area of applicability*)
 
-    Indeks ketidakmiripan (DI) mengukur jarak setiap piksel ke titik latih terdekat dalam ruang kovariat. Mengikuti Meyer dan Pebesma (2021), setiap kovariat diberi bobot sesuai kepentingannya dari Bagian C4, sehingga kovariat yang tidak berpengaruh tidak ikut menentukan. Di sini hanya kovariat numerik yang dipakai. Ambangnya diturunkan dari DI titik latih terhadap titik di lipatan blok lain. Ini penerapan sederhana untuk peragaan.
+    Indeks ketidakmiripan (*dissimilarity index*, DI) mengukur jarak setiap piksel ke titik latih terdekat dalam ruang kovariat. Mengikuti Meyer dan Pebesma (2021), setiap kovariat diberi bobot sesuai kepentingannya dari Bagian C4, sehingga kovariat yang tidak berpengaruh tidak ikut menentukan. Di sini hanya kovariat numerik yang dipakai. Ambangnya diturunkan dari DI titik latih terhadap titik di lipatan blok lain. Ini penerapan sederhana untuk peragaan.
     """),
     kode("""
     num_t = [k for k in terpilih if k in numerik]
@@ -1107,7 +1188,7 @@ P5 = [
     md("""
     ## C9. Di mana model salah?
 
-    Peta kesesuaian membandingkan peta prediksi dengan peta acuan piksel demi piksel. Titik menunjukkan hasil validasi blok spasial, yaitu benar atau salahnya tebakan saat blok titik itu disisihkan. Perhatikan apakah kesalahan mengumpul di kelas tertentu, di dekat batas kelas, atau di bagian wilayah tertentu.
+    Peta kesesuaian (*agreement map*) membandingkan peta prediksi dengan peta acuan piksel demi piksel. Titik menunjukkan hasil validasi blok spasial, yaitu benar atau salahnya tebakan saat blok titik itu disisihkan. Perhatikan apakah kesalahan mengumpul di kelas tertentu, di dekat batas kelas, atau di bagian wilayah tertentu.
     """),
     kode("""
     kesesuaian = ke_peta(np.where(sama, 1, 2))

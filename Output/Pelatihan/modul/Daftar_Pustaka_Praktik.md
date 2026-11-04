@@ -6,17 +6,25 @@ Barnes, R. J., Dhanoa, M. S., & Lister, S. J. (1989). Standard normal variate tr
 
 Branco, P., Torgo, L., & Ribeiro, R. P. (2017). SMOGN: A pre-processing approach for imbalanced regression. *Proceedings of Machine Learning Research*, *74*, 36–50. https://proceedings.mlr.press/v74/branco17a.html
 
+Breiman, L. (2001). Random forests. *Machine Learning*, *45*(1), 5–32. https://doi.org/10.1023/A:1010933404324
+
 Castaldi, F., Hueni, A., Chabrillat, S., Ward, K., Buttafuoco, G., Bomans, B., Vreys, K., Brell, M., & van Wesemael, B. (2019). Evaluating the capability of the Sentinel 2 data for soil organic carbon prediction in croplands. *ISPRS Journal of Photogrammetry and Remote Sensing*, *147*, 267–282. https://doi.org/10.1016/j.isprsjprs.2018.11.026
 
 Castaldi, F., Palombo, A., Santini, F., Pascucci, S., Pignatti, S., & Casa, R. (2016). Evaluation of the potential of the current and forthcoming multispectral and hyperspectral imagers to estimate soil texture and organic carbon. *Remote Sensing of Environment*, *179*, 54–65. https://doi.org/10.1016/j.rse.2016.03.025
 
 Chawla, N. V., Bowyer, K. W., Hall, L. O., & Kegelmeyer, W. P. (2002). SMOTE: Synthetic minority over-sampling technique. *Journal of Artificial Intelligence Research*, *16*, 321–357. https://doi.org/10.1613/jair.953
 
+Cohen, J. (1960). A coefficient of agreement for nominal scales. *Educational and Psychological Measurement*, *20*(1), 37–46. https://doi.org/10.1177/001316446002000104
+
+Congalton, R. G. (1991). A review of assessing the accuracy of classifications of remotely sensed data. *Remote Sensing of Environment*, *37*(1), 35–46. https://doi.org/10.1016/0034-4257(91)90048-B
+
 Demattê, J. A. M., Safanelli, J. L., Poppiel, R. R., Rizzo, R., Silvero, N. E. Q., Mendes, W. de S., Bonfatti, B. R., Dotto, A. C., Salazar, D. F. U., Mello, F. A. de O., Paiva, A. F. da S., Souza, A. B., Santos, N. V. dos, Maria Nascimento, C., Mello, D. C. de, Bellinaso, H., Gonzaga Neto, L., Amorim, M. T. A., Resende, M. E. B. de, . . . Lisboa, C. J. da S. (2020). Bare Earth's surface spectra as a proxy for soil resource monitoring. *Scientific Reports*, *10*(1), 4461. https://doi.org/10.1038/s41598-020-61408-1
 
 Diek, S., Fornallaz, F., Schaepman, M. E., & de Jong, R. (2017). Barest pixel composite for agricultural areas using Landsat time series. *Remote Sensing*, *9*(12), 1245. https://doi.org/10.3390/rs9121245
 
 Egozcue, J. J., Pawlowsky-Glahn, V., Mateu-Figueras, G., & Barceló-Vidal, C. (2003). Isometric logratio transformations for compositional data analysis. *Mathematical Geology*, *35*(3), 279–300. https://doi.org/10.1023/A:1023818214614
+
+England, J. R., & Viscarra Rossel, R. A. (2018). Proximal sensing for soil carbon accounting. *SOIL*, *4*(2), 101–122. https://doi.org/10.5194/soil-4-101-2018
 
 Fatmawati, N. D. (2026). *Evaluasi pendekatan SCORPAN dalam prediksi spasial fraksi tekstur tanah pada bahan induk hasil proses alterasi di Sub-DAS Bompon* [Tesis magister, Universitas Gadjah Mada].
 
@@ -53,3 +61,5 @@ Vivone, G., Alparone, L., Chanussot, J., Dalla Mura, M., Garzelli, A., Licciardi
 Wadoux, A. M. J.-C., Samuel-Rosa, A., Poggio, L., & Mulder, V. L. (2020). A note on knowledge discovery and machine learning in digital soil mapping. *European Journal of Soil Science*, *71*(2), 133–136. https://doi.org/10.1111/ejss.12909
 
 Wald, L., Ranchin, T., & Mangolini, M. (1997). Fusion of satellite images of different spatial resolutions: Assessing the quality of resulting images. *Photogrammetric Engineering and Remote Sensing*, *63*(6), 691–699.
+
+Wold, S., Sjöström, M., & Eriksson, L. (2001). PLS-regression: A basic tool of chemometrics. *Chemometrics and Intelligent Laboratory Systems*, *58*(2), 109–130. https://doi.org/10.1016/S0169-7439(01)00155-1

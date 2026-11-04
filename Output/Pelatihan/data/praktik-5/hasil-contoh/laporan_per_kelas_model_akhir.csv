@@ -1,0 +1,8 @@
+kode,Material,Titik,Recall (producer's accuracy),Presisi (user's accuracy),F1
+1,Breksi andesit sisipan diorit,30,0.43,0.45,0.44
+2,Breksi andesit teralterasi,30,0.17,0.18,0.17
+3,"Breksi andesit teralterasi, ditumpangi lapukan batupasir Menoreh",30,0.23,0.35,0.28
+4,Breksi vulkanik,30,0.23,0.23,0.23
+5,"Endapan material Sumbing Muda, pasir tufan, tuff pasiran, breksi andesit",30,0.23,0.23,0.23
+6,Endapan Sumbing Muda dan endapan material longsor,30,1.0,0.88,0.94
+7,Tuff pasiran,30,0.47,0.37,0.41

@@ -65,6 +65,28 @@ def spektra(tujuan_spektra):
         shutil.copyfileobj(masuk, keluar)
 
 
+def spektrum_sampel_baru(tujuan, n_lapisan_4=8, seed=3):
+    """Berkas contoh (dummy) untuk bagian 13 notebook Praktik 3, berformat seperti hasil pengukuran sampel baru:
+    kolom `sampel` dan w350-w2500 tanpa kolom laboratorium. Isinya spektrum asli dari pustaka yang sama, bukan nilai
+    rekaan: dua sampel lapisan 1 yang memang tidak memiliki hasil laboratorium, ditambah beberapa sampel lapisan 4
+    yang dipilih acak sebagai contoh tanah yang tidak dipakai melatih model lapisan 1."""
+    import csv
+    import random
+    with open(os.path.join(PSS, "data spectro geo.csv"), encoding="utf-8-sig") as f:
+        baris = list(csv.reader(f))
+    kepala = baris[0]
+    i_sampel, i_lempung = kepala.index("sampel"), kepala.index("clay")
+    i_spektrum = [i for i, k in enumerate(kepala) if k.startswith("w") and k[1:].isdigit()]
+    tanpa_lab = [r for r in baris[1:] if r[i_sampel].endswith(" L1") and not r[i_lempung].strip()]
+    lapisan_4 = [r for r in baris[1:] if r[i_sampel].endswith(" L4") and r[i_lempung].strip()]
+    pilih = sorted(random.Random(seed).sample(lapisan_4, n_lapisan_4), key=lambda r: int(r[i_sampel].split()[0][1:]))
+    with open(tujuan, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["sampel"] + [kepala[i] for i in i_spektrum])
+        for r in tanpa_lab + pilih:
+            w.writerow([r[i_sampel]] + [r[i] for i in i_spektrum])
+
+
 def praktik_1_lidar_demnas():
     """DEMNAS dan DTM LiDAR disalin utuh agar peserta memotongnya sendiri; foto udara 5–8 cm dirata-ratakan ke 1 m."""
     from osgeo import gdal
@@ -130,6 +152,7 @@ def main():
 
     # Praktik 3: pustaka spektral
     spektra(p(3, "spektra_visnir_gmp.csv.gz"))
+    spektrum_sampel_baru(p(3, "spektrum_sampel_baru.csv"))
 
     # Praktik 4: dua tanggal citra dengan SCL masing-masing
     for nama in ("sentinel2_l2a_20250721_10m.tif", "sentinel2_l2a_20250721_scl_10m.tif", "sentinel2_l2a_20240813_10m.tif"):
