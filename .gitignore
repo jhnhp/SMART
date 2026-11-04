@@ -25,3 +25,6 @@ Source/lidar_fill/
 Source/lidar_fill.aux.xml
 Source/DEMNAS/
 Source/Proximal Sensing/*.xlsx
+
+# Arsip data peserta (>100 MB, melebihi batas GitHub). Isi yang sama ada di Output/Pelatihan/data/.
+Output/Pelatihan/data.zip
