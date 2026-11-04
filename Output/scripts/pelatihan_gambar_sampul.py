@@ -7,13 +7,15 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from osgeo import gdal, ogr
-from matplotlib.colors import LightSource
+from matplotlib.colors import LightSource, ListedColormap
 
 gdal.UseExceptions()
 ogr.UseExceptions()
 AKAR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 D = os.path.join(AKAR, 'Output', 'Pelatihan', 'data')
 KELUAR = os.path.join(AKAR, 'Output', 'assets', 'pelatihan', 'sampul_alur_bompon.png')
+# palet tutupan material Praktik 5 (Okabe-Ito), kode 1 sampai 7
+WARNA_MATERIAL = ['#E69F00', '#56B4E9', '#0072B2', '#009E73', '#F0E442', '#D55E00', '#CC79A7']
 
 
 def baca(jalur, band=None):
@@ -49,8 +51,8 @@ def main():
     nir = np.dstack([rentang(a[6]), rentang(a[2]), rentang(a[1])])
     dem = baca(os.path.join(p5, 'kovariat', 'elevasi.tif')).astype(float)
     hs = LightSource(315, 45).hillshade(dem, vert_exag=3, dx=10, dy=10)
-    pred = baca(os.path.join(p5, 'hasil-contoh', 'prediksi_C_Organik_1.tif')).astype(float)
-    pred[pred < -100] = np.nan
+    pred = baca(os.path.join(p5, 'hasil-contoh', 'prediksi_material.tif')).astype(float)
+    pred[pred == 0] = np.nan
     batas = garis(os.path.join(p1, 'bompon_vektor.gpkg'), 'batas_subdas')
     smu = garis(os.path.join(p5, 'smu_akhir.gpkg'), 'smu_akhir')
 
@@ -62,7 +64,7 @@ def main():
     for c in smu:
         ax[2].plot(c[:, 0], c[:, 1], color='#ffd500', lw=.45)
     ax[3].imshow(hs, extent=ex, cmap='gray', interpolation='bilinear', alpha=.55)
-    ax[3].imshow(pred, extent=ex, cmap='YlOrBr', interpolation='nearest')
+    ax[3].imshow(pred, extent=ex, cmap=ListedColormap(WARNA_MATERIAL), vmin=.5, vmax=7.5, interpolation='nearest')
     for i, x in enumerate(ax):
         for c in batas:
             x.plot(c[:, 0], c[:, 1], color='#ffd500' if i < 3 else '#01416b', lw=1.3)

@@ -40,13 +40,14 @@ Cara pertama adalah memasangnya di laptop, sehingga praktik tetap dapat berjalan
 1. **Pasang Python 3.13.** Buka <https://www.python.org/downloads/>, lalu pilih rilis 3.13 terbaru pada daftar **Looking for a specific release?** Jangan langsung menekan tombol unduhan utama, karena tombol itu menawarkan Python 3.15, sedangkan sebagian pustaka praktik belum menyediakan paket siap pasang untuk versi tersebut. Pada Windows, centang **Add python.exe to PATH** di jendela pertama pemasang, lalu klik **Install Now**.
 2. **Buka terminal di folder `Pelatihan`.** Pada Windows, buka folder itu di File Explorer, ketik `cmd` pada bilah alamat, lalu tekan Enter. Pada macOS dan Linux, buka Terminal, lalu masuk ke folder itu dengan perintah `cd`.
 3. **Periksa Python.** Ketik `python --version`, atau `python3 --version` pada macOS dan Linux. Keluarannya harus menunjukkan 3.13.
-4. **Buat lingkungan kerja dan pasang pustaka.** Jalankan perintah berikut satu per satu. Tulisan di dalam kurung tidak ikut diketik. Perintah terakhir memerlukan internet dan ruang penyimpanan sekitar 800 MB, sehingga sebaiknya dikerjakan sebelum pelatihan.
+4. **Buat lingkungan kerja dan pasang pustaka.** Jalankan perintah berikut satu per satu. Tulisan di dalam kurung tidak ikut diketik. Perintah kedua dari bawah memperbarui pemasang paket `pip`, sedangkan perintah terakhir memasang semua pustaka praktik, termasuk Jupyter. Perintah terakhir memerlukan internet dan ruang penyimpanan sekitar 800 MB, sehingga sebaiknya dikerjakan sebelum pelatihan.
 
 ```
 python -m venv env_pelatihan
 env_pelatihan\Scripts\activate            (Windows)
 source env_pelatihan/bin/activate         (Linux atau macOS)
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
 5. **Periksa hasilnya.** Jalankan perintah berikut. Keluarannya harus berbunyi `Siap dipakai`.
@@ -55,7 +56,7 @@ pip install -r requirements.txt
 python -c "import rasterio, sklearn, catboost, imblearn; print('Siap dipakai')"
 ```
 
-6. **Buka Jupyter.** Ketik `jupyter lab`, atau `jupyter notebook` jika ingin tampilan yang lebih sederhana. Browser akan terbuka dan menampilkan isi folder. Masuk ke `data/`, lalu klik dua kali berkas `.ipynb`. Biarkan terminal tetap terbuka selama bekerja, dan tekan **Ctrl + C** pada terminal itu untuk menutup Jupyter.
+6. **Buka Jupyter.** Ketik `jupyter lab`, atau `python -m notebook` jika ingin tampilan yang lebih sederhana. Browser akan terbuka dan menampilkan isi folder. Masuk ke `data/`, lalu klik dua kali berkas `.ipynb`. Biarkan terminal tetap terbuka selama bekerja, dan tekan **Ctrl + C** pada terminal itu untuk menutup Jupyter.
 
 Saat membukanya lagi di lain waktu, langkah 1 sampai 5 tidak perlu diulang. Cukup buka terminal di folder `Pelatihan`, jalankan perintah `activate` seperti langkah 4, lalu `jupyter lab`.
 
@@ -66,7 +67,7 @@ Tabel P0.2 Masalah yang Umum saat Memasang Jupyter
 | `python` tidak dikenali | Python belum masuk PATH | Pasang ulang dengan mencentang **Add python.exe to PATH**, lalu buka terminal baru |
 | Perintah `activate` ditolak | Terminal yang dipakai PowerShell | Pakai Command Prompt (`cmd`) seperti langkah 2 |
 | `pip` gagal memasang `rasterio` atau `scipy` | Versi Python terlalu baru atau terlalu lama | Pasang Python 3.13, hapus folder `env_pelatihan`, lalu ulangi langkah 4 |
-| `jupyter` tidak dikenali | Lingkungan kerja belum aktif | Jalankan perintah `activate` lebih dulu |
+| `jupyter` tidak dikenali | Lingkungan kerja belum aktif | Jalankan perintah `activate` lebih dulu, atau pakai `python -m notebook` |
 
 Sumber: Disusun penyusun
 

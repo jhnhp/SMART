@@ -11,6 +11,11 @@
  *
  * Jalankan: NODE_PATH=<folder>/node_modules node Output/scripts/pelatihan_buat_docx.js <folder_kerja_sementara>
  * Memerlukan: docx dan jszip (npm), LibreOffice, poppler-utils, ImageMagick.
+ *
+ * Di Windows, dua variabel lingkungan dapat menggantikan alat Linux tersebut:
+ * - ALAT_PYTHON=<python yang memiliki Pillow dan PyMuPDF> menggantikan ImageMagick dan poppler-utils;
+ * - PDF_WORD=1 membuat PDF uji dengan Microsoft Word melalui PowerShell, sehingga nomor halaman pada daftar
+ *   mengikuti tata letak Word. Tanpa itu dipakai LibreOffice (`soffice`, atau jalur pada variabel SOFFICE).
  */
 const fs = require('fs');
 const path = require('path');
@@ -100,16 +105,66 @@ function sebaris(teks, opsi = {}) {
   return run;
 }
 
+// ---------------------------------------------------------------- alat luar
+const ALAT_PYTHON = process.env.ALAT_PYTHON;
+const PDF_WORD = process.env.PDF_WORD === '1';
+
+function python(kode, ...arg) {
+  return execFileSync(ALAT_PYTHON, ['-I', '-c', kode, ...arg], { maxBuffer: 256 * 1024 * 1024 }).toString();
+}
+
+// setara convert -background white -flatten -resize 1400x> -quality 86
+const PY_GAMBAR = `
+import sys
+from PIL import Image
+im = Image.open(sys.argv[1])
+if im.mode in ('RGBA', 'LA', 'P', 'PA'):
+    im = im.convert('RGBA')
+    latar = Image.new('RGB', im.size, 'white')
+    latar.paste(im, mask=im.split()[3])
+    im = latar
+else:
+    im = im.convert('RGB')
+if im.width > 1400:
+    im = im.resize((1400, round(im.height * 1400 / im.width)), Image.LANCZOS)
+im.save(sys.argv[2], quality=86)
+`;
+
+function ukuranGambar(jalur) {
+  if (ALAT_PYTHON) return python('import sys\nfrom PIL import Image\nprint(*Image.open(sys.argv[1]).size)', jalur).trim().split(' ').map(Number);
+  return execFileSync('identify', ['-format', '%w %h', jalur]).toString().split(' ').map(Number);
+}
+
+function keePdf(docx, folder) {
+  if (PDF_WORD) {
+    const pdf = path.join(folder, path.basename(docx).replace(/\.docx$/i, '.pdf'));
+    const skrip = `$w = New-Object -ComObject Word.Application; $w.Visible = $false; $w.DisplayAlerts = 0; ` +
+      `try { $d = $w.Documents.Open('${docx}', $false, $true); $d.ExportAsFixedFormat('${pdf}', 17); $d.Close(0) } finally { $w.Quit() }`;
+    execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', skrip], { stdio: 'ignore', timeout: 600000 });
+    return;
+  }
+  execFileSync(process.env.SOFFICE || 'soffice', ['--headless', '--convert-to', 'pdf', '--outdir', folder, docx], { stdio: 'ignore' });
+}
+
+function teksPerHalaman(pdf) {
+  if (ALAT_PYTHON) return JSON.parse(python('import sys, json, fitz\nprint(json.dumps([p.get_text(sort=True) for p in fitz.open(sys.argv[1])]))', pdf));
+  const jumlah = Number(execFileSync('pdfinfo', [pdf]).toString().match(/Pages:\s+(\d+)/)[1]);
+  const hasil = [];
+  for (let i = 1; i <= jumlah; i++) hasil.push(execFileSync('pdftotext', ['-f', String(i), '-l', String(i), pdf, '-']).toString());
+  return hasil;
+}
+
 // ---------------------------------------------------------------- gambar
 function siapkanGambar(jalur) {
   const asal = path.resolve(MODUL, jalur);
   const nama = jalur.replace(/[^\w.-]+/g, '_').replace(/\.png$/, '.jpg');
   const tujuan = path.join(KERJA, 'gambar', nama);
   if (!fs.existsSync(tujuan)) {
-    execFileSync('convert', [asal, '-background', 'white', '-flatten', '-resize', '1400x>', '-quality', '86', tujuan]);
+    if (ALAT_PYTHON) python(PY_GAMBAR, asal, tujuan);
+    else execFileSync('convert', [asal, '-background', 'white', '-flatten', '-resize', '1400x>', '-quality', '86', tujuan]);
   }
-  const [l, t] = execFileSync('identify', ['-format', '%w %h', tujuan]).toString().split(' ').map(Number);
-  const asli = execFileSync('identify', ['-format', '%w', asal]).toString();
+  const [l, t] = ukuranGambar(tujuan);
+  const asli = ukuranGambar(asal)[0];
   // jendela penuh selebar teks; dialog kecil ditampilkan lebih kecil agar tidak memakan halaman
   // dua gambar dengan satu langkah singkat harus muat dalam satu halaman
   let lebar = Number(asli) >= 1200 ? 570 : Math.min(570, Number(asli) * 0.54);
@@ -120,7 +175,10 @@ function siapkanGambar(jalur) {
 
 function gambarPng(nama, warna) {
   const tujuan = path.join(KERJA, nama);
-  if (!fs.existsSync(tujuan)) execFileSync('convert', ['-size', '8x8', `xc:#${warna}`, tujuan]);
+  if (!fs.existsSync(tujuan)) {
+    if (ALAT_PYTHON) python('import sys\nfrom PIL import Image\nImage.new("RGB", (8, 8), "#" + sys.argv[2]).save(sys.argv[1])', tujuan, warna);
+    else execFileSync('convert', ['-size', '8x8', `xc:#${warna}`, tujuan]);
+  }
   return fs.readFileSync(tujuan);
 }
 
@@ -301,7 +359,8 @@ function footerIsi() {
 const halaman = (ekstra = {}) => ({ page: { size: { width: LEBAR_HAL, height: TINGGI_HAL }, margin: { top: 1500, bottom: 1250, left: TEPI, right: TEPI, header: 300, footer: 0, ...ekstra.margin }, pageNumbers: { formatType: D.NumberFormat.DECIMAL_ZERO, ...ekstra.pageNumbers } } });
 
 // ---------------------------------------------------------------- isi
-function bacaModul(nama) { return bacaBlok(fs.readFileSync(path.join(MODUL, nama), 'utf8')); }
+// akhir baris CRLF (salinan kerja Windows) disamakan dengan LF
+function bacaModul(nama) { return bacaBlok(fs.readFileSync(path.join(MODUL, nama), 'utf8').replace(/\r\n?/g, '\n')); }
 
 function potongBagian(blok, judul) {
   const a = blok.findIndex(b => b.jenis === 'h2' && b.teks === judul);
@@ -330,7 +389,7 @@ function sampul() {
       new D.Paragraph({ children: [new D.TextRun({ text: 'Pembelajaran', font: FONT, size: 104, bold: true, color: NAVY })], spacing: { after: 160, line: 240 } }),
       new D.Paragraph({ children: [new D.TextRun({ text: 'Praktik Remote Sensing dan Digital Soil Mapping untuk Pertanian Presisi pada Perkebunan Kelapa Sawit', font: FONT, size: 30, bold: true, color: '222222' })], spacing: { after: 20 }, indent: { right: 900 } }),
       new D.Paragraph({ children: [new D.TextRun({ text: 'Wilayah latihan: Sub-DAS Bompon dan Site Gunung Madu Plantation', font: FONT, size: 26, color: '222222' })], spacing: { after: 0 } }),
-      new D.Paragraph({ children: [new D.TextRun({ text: 'Sub-DAS Bompon, dari kiri: komposit inframerah dekat, komposit SWIR, batas SMU di atas bayangan medan, dan prediksi C-organik dari model latihan. Contains modified Copernicus Sentinel data 2024–2025.', font: FONT, size: 15, color: ABU })], spacing: { before: 6420, after: 240 }, indent: { right: 900 } }),
+      new D.Paragraph({ children: [new D.TextRun({ text: 'Sub-DAS Bompon, dari kiri: komposit inframerah dekat, komposit SWIR, batas SMU di atas bayangan medan, dan prediksi tutupan material dari model latihan. Contains modified Copernicus Sentinel data 2024–2025.', font: FONT, size: 15, color: ABU })], spacing: { before: 6420, after: 240 }, indent: { right: 900 } }),
       new D.Table({ width: { size: 8600, type: D.WidthType.DXA }, columnWidths: [4300, 4300], layout: D.TableLayoutType.FIXED, rows: [new D.TableRow({ children: [kolom('Disusun oleh:', 'Pusat Studi Pengelolaan Sumber Daya Lahan, Universitas Gadjah Mada'), kolom('Pelatihan:', '3–5 November 2026')] })] }),
     ],
   };
@@ -475,10 +534,9 @@ function bangun(nomor) {
 }
 
 function halamanJudul(pdf, hasil) {
-  const jumlah = Number(execFileSync('pdfinfo', [pdf]).toString().match(/Pages:\s+(\d+)/)[1]);
   const rapi = t => t.replace(/ﬁ/g, 'fi').replace(/ﬂ/g, 'fl').replace(/\s+/g, ' ').trim().toLowerCase();
-  const teksHal = [];
-  for (let i = 1; i <= jumlah; i++) teksHal.push(rapi(execFileSync('pdftotext', ['-f', String(i), '-l', String(i), pdf, '-']).toString()));
+  const teksHal = teksPerHalaman(pdf).map(rapi);
+  const jumlah = teksHal.length;
   // halaman fisik 1 sampul; nomor tercetak = indeks 0-based pada teksHal
   const awal = judul => { const i = teksHal.findIndex(t => t.startsWith(judul)); if (i < 0) throw new Error('Halaman tidak ditemukan: ' + judul); return i; };
   const nomor = { hal_pengantar: awal('kata pengantar'), hal_isi: awal('daftar isi'), hal_tabel: awal('daftar tabel'), hal_gambar: awal('daftar gambar') };
@@ -511,7 +569,7 @@ async function main() {
   const uji = path.join(KERJA, 'uji.docx');
   let hasil = bangun({});
   fs.writeFileSync(uji, await pasangDaftar(await D.Packer.toBuffer(hasil.doc), hasil, {}));
-  execFileSync('soffice', ['--headless', '--convert-to', 'pdf', '--outdir', KERJA, uji], { stdio: 'ignore' });
+  keePdf(uji, KERJA);
   const { nomor, jumlah } = halamanJudul(path.join(KERJA, 'uji.pdf'), hasil);
   hasil = bangun(nomor);
   fs.writeFileSync(KELUAR, await pasangDaftar(await D.Packer.toBuffer(hasil.doc), hasil, nomor));
