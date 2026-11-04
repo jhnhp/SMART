@@ -16,7 +16,11 @@ Demattê, J. A. M., Safanelli, J. L., Poppiel, R. R., Rizzo, R., Silvero, N. E. 
 
 Diek, S., Fornallaz, F., Schaepman, M. E., & de Jong, R. (2017). Barest pixel composite for agricultural areas using Landsat time series. *Remote Sensing*, *9*(12), 1245. https://doi.org/10.3390/rs9121245
 
+Egozcue, J. J., Pawlowsky-Glahn, V., Mateu-Figueras, G., & Barceló-Vidal, C. (2003). Isometric logratio transformations for compositional data analysis. *Mathematical Geology*, *35*(3), 279–300. https://doi.org/10.1023/A:1023818214614
+
 Fatmawati, N. D. (2026). *Evaluasi pendekatan SCORPAN dalam prediksi spasial fraksi tekstur tanah pada bahan induk hasil proses alterasi di Sub-DAS Bompon* [Tesis magister, Universitas Gadjah Mada].
+
+Geladi, P., MacDougall, D., & Martens, H. (1985). Linearization and scatter-correction for near-infrared reflectance spectra of meat. *Applied Spectroscopy*, *39*(3), 491–500. https://doi.org/10.1366/0003702854248656
 
 Lemaître, G., Nogueira, F., & Aridas, C. K. (2017). Imbalanced-learn: A Python toolbox to tackle the curse of imbalanced datasets in machine learning. *Journal of Machine Learning Research*, *18*(17), 1–5. https://jmlr.org/papers/v18/16-365.html
 

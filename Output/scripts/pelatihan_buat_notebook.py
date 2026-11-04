@@ -59,103 +59,106 @@ print('Folder kerja:', os.path.basename(os.getcwd()))
 # ---------------------------------------------------------------------------------------------
 # PRAKTIK 3
 # ---------------------------------------------------------------------------------------------
-P3 = [
-    md("""
-    # Praktik 3. Dari Spektrum Pantulan ke Sifat Tanah
+INSTAL_P3 = """
+# ==============================================================================
+# INSTALASI DEPENDENSI (Jalankan sel ini HANYA jika pustaka belum terpasang)
+# Hilangkan tanda pagar (#) pada baris di bawah untuk memasang dependensi:
+# ==============================================================================
+# !pip install numpy pandas matplotlib scipy scikit-learn
+# Atau instal seluruh dependensi modul melalui file requirements.txt:
+# !pip install -r ../../requirements.txt
+"""
 
-    ASD FieldSpec 4 merekam **spektrum pantulan**, bukan nilai sifat tanah. Nilai sifat tanah baru diperoleh setelah spektrum dihubungkan dengan hasil laboratorium melalui model kalibrasi. Notebook ini menelusuri jalan tersebut dengan pustaka spektral vis-NIR 350–2.500 nm: membaca spektrum, mengenali fitur serapan, memberi praolah, lalu melatih dan menilai model *Partial Least Squares Regression* (PLSR).
+P3 = [
+    kode(INSTAL_P3),
+    md("""
+    # Praktik 3. Dari Spektrum Pantulan ke Komposisi Tekstur Tanah
+
+    ASD FieldSpec 4 merekam **spektrum pantulan**, bukan nilai sifat tanah. Nilai sifat tanah baru diperoleh setelah spektrum dihubungkan dengan hasil laboratorium melalui model kalibrasi. Notebook ini menelusuri jalan tersebut untuk **tekstur tanah lapisan atas**, yaitu persentase lempung, debu, dan pasir. Ketiganya adalah komposisi: jumlahnya selalu 100%, sehingga prediksinya pun harus berjumlah 100%. Karena itu, sasaran diubah dulu dengan transformasi log-rasio isometrik (*isometric log-ratio*, ILR).
+
+    Alurnya: membaca spektrum, mengenali fitur serapan, mencoba lima praolah, melatih *Partial Least Squares Regression* (PLSR) dan *random forest*, lalu menilai hasilnya per fraksi. Seluruh notebook selesai dalam satu sampai dua menit.
 
     Pegangan membaca notebook: jalankan sel dari atas ke bawah dengan **Shift + Enter**, lalu baca keluarannya sebelum lanjut. Rujukan konsep ada di Modul 7, Gambar 7.3 dan 7.4.
 
-    **Catatan data.** Pustaka ini merupakan hasil pengujian sampel tanah dari Site Gunung Madu Plantation (GMP), Lampung, jadi bukan dari Sub-DAS Bompon. Kode sampel `S3 L2` ditafsirkan sebagai profil S3 lapisan 2. Model dalam notebook ini dilatih dari tanah GMP dan dipakai untuk latihan. Untuk tanah dari tempat lain, hasilnya hanya pendekatan sampai diuji dengan sampel setempat (Modul 7).
+    **Catatan data.** Pustaka ini merupakan hasil pengujian sampel tanah dari Site Gunung Madu Plantation (GMP), Lampung, jadi bukan dari Sub-DAS Bompon. Kode sampel `S3 L1` ditafsirkan sebagai profil S3 lapisan 1. Model dalam notebook ini dilatih dari tanah GMP dan dipakai untuk latihan. Untuk tanah dari tempat lain, hasilnya hanya pendekatan sampai diuji dengan sampel setempat (Modul 7).
     """),
     md("## 1. Menyiapkan lingkungan kerja"),
     kode(SIAPKAN.format(paket='numpy pandas scipy scikit-learn matplotlib', n=3)),
     kode("""
+    import time
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
     from scipy.signal import savgol_filter
+    from scipy.stats import pearsonr
     from sklearn.cross_decomposition import PLSRegression
-    from sklearn.model_selection import GroupKFold, GroupShuffleSplit, KFold, cross_val_predict
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    from sklearn.base import clone
+    from sklearn.model_selection import RepeatedKFold, train_test_split
     plt.rcParams.update({'figure.dpi': 110, 'axes.grid': True, 'grid.alpha': .3, 'font.size': 9})
+    MULAI = time.time()
     """),
     md("""
-    ## 2. Membaca pustaka spektral
+    ## 2. Membaca pustaka spektral dan memilih lapisan 1
 
-    Setiap baris adalah satu sampel. Kolom `w350` sampai `w2500` berisi pantulan pada setiap panjang gelombang, sedangkan kolom lainnya berisi hasil laboratorium.
+    Setiap baris adalah satu sampel. Kolom `w350` sampai `w2500` berisi pantulan pada setiap panjang gelombang, sedangkan kolom lainnya berisi hasil laboratorium. Setiap profil diambil sampai empat atau lima lapisan, dan lapisan dari profil yang sama saling mirip. Praktik ini hanya memakai **lapisan 1**, sehingga setiap profil diwakili satu sampel. Dengan begitu, pembagian acak latih dan uji tidak menempatkan lapisan dari profil yang sama di kedua sisi.
     """),
     kode("""
     data = pd.read_csv('spektra_visnir_gmp.csv.gz')
     kolom_spektrum = [k for k in data.columns if k.startswith('w') and k[1:].isdigit()]
-    kolom_lab = [k for k in data.columns if k not in kolom_spektrum and k != 'sampel']
     panjang_gel = np.array([int(k[1:]) for k in kolom_spektrum], dtype=float)
     data = data.copy()
     data['profil'] = data['sampel'].str.extract(r'^(S\\d+)')[0]
+    data['lapisan'] = data['sampel'].str.extract(r'L(\\d+)')[0].astype(float)
+    FRAKSI = ['clay', 'silt', 'sand']          # lempung, debu, pasir
 
-    print('Sampel :', len(data))
-    print('Profil :', data['profil'].nunique())
-    print('Lapisan per profil:', data.groupby('profil').size().value_counts().sort_index().to_dict())
-    print('Kanal  :', len(panjang_gel), 'dari', panjang_gel.min(), 'sampai', panjang_gel.max(), 'nm')
-    print('Sifat tanah:', kolom_lab)
-    data[['sampel', 'profil', 'c_organik', 'n_total', 'clay', 'sand', 'ph_h2o', 'kpk', 'p_tersedia']].head(6)
+    lapisan_1 = data[data['lapisan'] == 1]
+    tanpa_lab = lapisan_1[lapisan_1[FRAKSI].isna().any(axis=1)].reset_index(drop=True)
+    data_l1 = lapisan_1[lapisan_1[FRAKSI].notna().all(axis=1) & (lapisan_1[FRAKSI] > 0).all(axis=1)].reset_index(drop=True)
+    jumlah = data_l1[FRAKSI].sum(axis=1)
+
+    print('Seluruh pustaka       :', len(data), 'sampel dari', data['profil'].nunique(), 'profil')
+    print('Sampel per lapisan    :', data['lapisan'].value_counts().sort_index().astype(int).to_dict())
+    print('Kanal                 :', len(panjang_gel), 'dari', panjang_gel.min(), 'sampai', panjang_gel.max(), 'nm')
+    print('Lapisan 1 bertekstur  :', len(data_l1), 'sampel')
+    print('Lapisan 1 tanpa lab   :', tanpa_lab['sampel'].tolist())
+    print(f'Lempung + debu + pasir: {jumlah.min():.2f}-{jumlah.max():.2f}%')
+    data_l1[FRAKSI].describe().T[['count', 'min', '50%', 'mean', 'max']].round(1)
     """),
     md("""
-    **Periksa datanya dulu.** Dua hal perlu diketahui sebelum memodelkan: sampel yang tidak memiliki hasil laboratorium, dan nilai yang tidak mungkin secara fisik. Sampel tanpa hasil laboratorium tidak dapat dipakai melatih model, tetapi berguna pada Bagian 11.
+    Jumlah ketiga fraksi tidak selalu tepat 100% karena pembulatan di laboratorium. Sebelum dimodelkan, setiap sampel dinormalisasi agar jumlahnya tepat 100%, dengan perbandingan antarfraksi yang tetap.
+
+    ## 3. Melihat spektrum
     """),
     kode("""
-    tanpa_lab = data[data['clay'].isna()].reset_index(drop=True)
-    print('Sampel tanpa hasil laboratorium:', tanpa_lab['sampel'].tolist())
-    print('C-organik bernilai 0:')
-    print(data.loc[data['c_organik'] == 0, ['sampel', 'c_organik', 'n_total']].to_string(index=False))
-
-    # C-organik 0 tidak mungkin pada tanah yang N-totalnya 0,11, sehingga diperlakukan sebagai data kosong
-    data.loc[data['c_organik'] == 0, 'c_organik'] = np.nan
-
-    data_lab = data[data['clay'].notna()].reset_index(drop=True)
-    profil = data_lab['profil'].values
-    data_lab[['c_organik', 'n_total', 'clay', 'silt', 'sand', 'ph_h2o', 'kpk', 'p_tersedia', 'k_tersedia']].describe().T[['count', 'min', '50%', 'mean', 'max', 'std']].round(2)
-    """),
-    md("## 3. Melihat spektrum"),
-    kode("""
-    urut = data_lab.dropna(subset=['c_organik']).sort_values('c_organik')
-    contoh = urut.iloc[[2, len(urut) // 2, -1]]
-    S = data_lab[kolom_spektrum].values
-    fig, ax = plt.subplots(1, 2, figsize=(11, 3.4))
-    for _, b in contoh.iterrows():
-        ax[0].plot(panjang_gel, b[kolom_spektrum].values.astype(float), lw=.9, label=f"{b['sampel']}, C-organik {b['c_organik']:.2f}%")
-    ax[0].set(title='Tiga sampel dengan C-organik berbeda', xlabel='Panjang gelombang (nm)', ylabel='Pantulan'); ax[0].legend()
-    ax[1].plot(panjang_gel[1:], np.abs(np.diff(S, axis=1)).mean(axis=0), color='crimson', lw=.7)
-    ax[1].set(title='Rerata beda nilai antarkanal berdekatan', xlabel='Panjang gelombang (nm)')
-    plt.tight_layout(); plt.savefig('hasil/spektrum_contoh.png', dpi=150); plt.show()
-    print('Beda antarkanal 350-399 nm:', round(np.abs(np.diff(S[:, panjang_gel < 400], axis=1)).mean(), 5))
+    S = data_l1[kolom_spektrum].values
+    print('Beda antarkanal 350-399 nm :', round(np.abs(np.diff(S[:, panjang_gel < 400], axis=1)).mean(), 5))
     print('Beda antarkanal 400-2500 nm:', round(np.abs(np.diff(S[:, panjang_gel >= 400], axis=1)).mean(), 5))
-    """),
-    md("""
-    Spektrum yang halus seharusnya hampir tidak berubah antarkanal yang berdekatan. Di bawah 400 nm, nilainya melompat-lompat, yang menandakan derau, sehingga pemodelan hanya memakai 400–2.500 nm. Lonjakan sempit di 1.000 nm dan 1.800 nm berada tepat pada batas antardetektor alat, sedangkan lonjakan lainnya mengikuti tepi fitur serapan.
-    """),
-    kode("""
     pilih = panjang_gel >= 400
     wl = panjang_gel[pilih]
-    R = data_lab[kolom_spektrum].values[:, pilih]
+    R = S[:, pilih]
 
-    fig, ax = plt.subplots(figsize=(9, 3.6))
-    ada = np.where(data_lab['c_organik'].notna())[0]
-    urut_c = ada[np.argsort(data_lab['c_organik'].values[ada])]
-    warna = plt.cm.viridis(np.linspace(0, 1, len(urut_c)))
-    for w, i in zip(warna, urut_c):
-        ax.plot(wl, R[i], color=w, lw=.35, alpha=.7)
-    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(data_lab['c_organik'].min(), data_lab['c_organik'].max()))
-    plt.colorbar(sm, ax=ax, label='C-organik (%)')
+    fig, ax = plt.subplots(1, 2, figsize=(12, 3.6), gridspec_kw={'width_ratios': [1, 2]})
+    ax[0].plot(panjang_gel[1:], np.abs(np.diff(S, axis=1)).mean(axis=0), color='crimson', lw=.7)
+    ax[0].set(title='Rerata beda nilai antarkanal berdekatan', xlabel='Panjang gelombang (nm)')
+    urut = np.argsort(data_l1['clay'].values)
+    warna = plt.cm.viridis(np.linspace(0, 1, len(urut)))
+    for w, i in zip(warna, urut):
+        ax[1].plot(wl, R[i], color=w, lw=.5)
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(data_l1['clay'].min(), data_l1['clay'].max()))
+    plt.colorbar(sm, ax=ax[1], label='Lempung (%)')
     for pos, nama in [(900, 'oksida besi'), (1400, 'air/OH'), (1900, 'air'), (2205, 'kaolinit')]:
-        ax.axvline(pos, color='k', lw=.6, ls='--'); ax.text(pos + 8, ax.get_ylim()[1] * .94, nama, fontsize=8)
-    ax.set(title='Spektrum setiap sampel', xlabel='Panjang gelombang (nm)', ylabel='Pantulan')
-    plt.tight_layout(); plt.savefig('hasil/spektrum_semua_sampel.png', dpi=150); plt.show()
+        ax[1].axvline(pos, color='k', lw=.6, ls='--'); ax[1].text(pos + 8, ax[1].get_ylim()[1] * .94, nama, fontsize=8)
+    ax[1].set(title='Spektrum lapisan 1, diwarnai menurut kadar lempung', xlabel='Panjang gelombang (nm)', ylabel='Pantulan')
+    plt.tight_layout(); plt.savefig('hasil/spektrum_lapisan1.png', dpi=150); plt.show()
     """),
     md("""
+    Spektrum yang halus seharusnya hampir tidak berubah antarkanal yang berdekatan. Di bawah 400 nm nilainya melompat-lompat, yang menandakan derau, sehingga pemodelan hanya memakai 400–2.500 nm. Lonjakan sempit di 1.000 nm dan 1.800 nm berada pada batas antardetektor alat.
+
     ## 4. Membaca fitur serapan
 
-    Posisi serapan yang ditandai di atas mengikuti Modul 7 (Molin & Tavares, 2019). Dua hubungan diuji di sini. Yang pertama adalah kedalaman serapan kaolinit di sekitar 2.205 nm terhadap kadar lempung, dengan garis kontinum sederhana antara 2.120 nm dan 2.250 nm. Yang kedua adalah pantulan wilayah tampak terhadap C-organik, karena Modul 4 menyebut bahan organik menurunkan pantulan pada wilayah tersebut.
+    Lembah di sekitar 2.205 nm berasal dari kaolinit, mineral lempung yang umum pada tanah tropis yang telah lapuk lanjut (Modul 7). Sel berikut mengukur kedalaman serapan itu dengan garis kontinum sederhana antara 2.120 nm dan 2.250 nm, lalu membandingkannya dengan kadar lempung.
     """),
     kode("""
     def kedalaman_serapan(R, wl, kiri=2120, pusat=2205, kanan=2250):
@@ -164,205 +167,307 @@ P3 = [
         return 1 - R[:, c] / kontinum
 
     kedalaman = kedalaman_serapan(R, wl)
-    tampak = R[:, (wl >= 550) & (wl <= 700)].mean(axis=1)
-    m_c = data_lab['c_organik'].notna().values
-    r_lempung = np.corrcoef(kedalaman, data_lab['clay'])[0, 1]
-    r_corg = np.corrcoef(tampak[m_c], data_lab['c_organik'][m_c])[0, 1]
-    fig, ax = plt.subplots(1, 2, figsize=(9, 3.5))
-    ax[0].scatter(kedalaman, data_lab['clay'], s=10, alpha=.6)
-    ax[0].set(xlabel='Kedalaman serapan 2.205 nm', ylabel='Lempung (%)', title=f'r = {r_lempung:.2f}')
-    ax[1].scatter(tampak[m_c], data_lab['c_organik'][m_c], s=10, alpha=.6, color='#8c510a')
-    ax[1].set(xlabel='Rerata pantulan 550-700 nm', ylabel='C-organik (%)', title=f'r = {r_corg:.2f}')
+    r_lempung = np.corrcoef(kedalaman, data_l1['clay'])[0, 1]
+    fig, ax = plt.subplots(figsize=(4.4, 3.4))
+    ax.scatter(kedalaman, data_l1['clay'], s=14, alpha=.7)
+    ax.set(xlabel='Kedalaman serapan 2.205 nm', ylabel='Lempung (%)', title=f'r = {r_lempung:.2f}')
     plt.tight_layout(); plt.savefig('hasil/fitur_serapan.png', dpi=150); plt.show()
     print('Korelasi kedalaman serapan dengan lempung:', round(r_lempung, 2))
-    print('Korelasi pantulan tampak dengan C-organik:', round(r_corg, 2))
     """),
     md("""
-    ## 5. Praolah spektrum
+    ## 5. Membagi data latih dan uji
 
-    Sebagian besar keragaman spektrum disebabkan oleh ukuran partikel dan hamburan, bukan komposisi kimia (Barnes et al., 1989). *Standard Normal Variate* (SNV) meredam gangguan tersebut, sedangkan turunan pertama Savitzky–Golay menajamkan fitur serapan. Keduanya dihitung per spektrum, sehingga tidak ada informasi yang bocor antarsampel.
+    Data dibagi sekali secara acak: 80% untuk melatih dan 20% untuk menguji. Pembagian yang sama dipakai untuk semua praolah dan algoritme, sehingga perbandingannya adil. Data uji tidak disentuh sampai penilaian akhir.
+    """),
+    kode("""
+    latih, uji = train_test_split(np.arange(len(data_l1)), test_size=0.2, random_state=42)
+    print('Latih:', len(latih), 'sampel | Uji:', len(uji), 'sampel')
+    """),
+    md("""
+    ## 6. Praolah spektrum
+
+    Sebagian besar keragaman spektrum disebabkan oleh ukuran partikel dan hamburan, bukan komposisi kimia. Lima praolah dicoba:
+
+    1. **RAW**, yaitu pantulan apa adanya.
+    2. **SNV** (*Standard Normal Variate*), yaitu setiap spektrum dikurangi rata-ratanya lalu dibagi simpangan bakunya (Barnes et al., 1989).
+    3. **MSC** (*Multiplicative Scatter Correction*), yaitu setiap spektrum diregresikan terhadap spektrum acuan, lalu dikoreksi dengan potongan dan kemiringannya (Geladi et al., 1985). Spektrum acuan dihitung dari data latih saja.
+    4. **SG**, yaitu penghalusan Savitzky–Golay dengan jendela 11 kanal (Savitzky & Golay, 1964).
+    5. **SG-FD**, yaitu turunan pertama Savitzky–Golay, yang menonjolkan posisi fitur serapan.
     """),
     kode("""
     def snv(A):
         return (A - A.mean(axis=1, keepdims=True)) / A.std(axis=1, keepdims=True)
 
-    def turunan(A):
-        return savgol_filter(A, window_length=21, polyorder=2, deriv=1, axis=1)
+    def msc(A, acuan):
+        hasil = np.empty_like(A)
+        for i, baris in enumerate(A):
+            miring, potong = np.polyfit(acuan, baris, 1)
+            hasil[i] = (baris - potong) / miring
+        return hasil
 
-    praolah = {'Pantulan mentah': lambda A: A,
-               'SNV': snv,
-               'SNV + turunan pertama': lambda A: turunan(snv(A))}
+    def praolah(nama, A, acuan):
+        if nama == 'RAW':
+            return A
+        if nama == 'SNV':
+            return snv(A)
+        if nama == 'MSC':
+            return msc(A, acuan)
+        return savgol_filter(A, window_length=11, polyorder=2, deriv=1 if nama == 'SG-FD' else 0, axis=1)
 
-    fig, ax = plt.subplots(1, 3, figsize=(12, 3))
-    for a, (nama, f) in zip(ax, praolah.items()):
-        a.plot(wl, f(R)[::12].T, lw=.4)
+    PRAOLAH = ['RAW', 'SNV', 'MSC', 'SG', 'SG-FD']
+    acuan_latih = R[latih].mean(axis=0)
+    fig, ax = plt.subplots(1, 5, figsize=(14, 2.8))
+    for a, nama in zip(ax, PRAOLAH):
+        a.plot(wl, praolah(nama, R, acuan_latih)[::5].T, lw=.4)
         a.set(title=nama, xlabel='Panjang gelombang (nm)')
     plt.tight_layout(); plt.savefig('hasil/praolah.png', dpi=150); plt.show()
     """),
     md("""
-    Korelogram memperlihatkan wilayah spektrum yang berhubungan dengan sifat tanah, sebelum dan sesudah praolah.
+    ## 7. Komposisi dan transformasi ILR
+
+    Bagaimana jika setiap fraksi dimodelkan sendiri-sendiri? Sel berikut melatih tiga model PLSR terpisah untuk lempung, debu, dan pasir, lalu menjumlahkan prediksinya.
     """),
     kode("""
-    def korelogram(A, y):
-        return np.array([np.corrcoef(A[:, j], y)[0, 1] for j in range(A.shape[1])])
-
-    fig, ax = plt.subplots(1, 2, figsize=(11, 3), sharey=True)
-    for a, t in zip(ax, ['c_organik', 'clay']):
-        m = data_lab[t].notna().values
-        a.plot(wl, korelogram(R[m], data_lab[t][m]), lw=.9, label='Pantulan mentah')
-        a.plot(wl, korelogram(turunan(snv(R))[m], data_lab[t][m]), lw=.6, label='SNV + turunan')
-        a.axhline(0, color='k', lw=.5); a.set(title=t, xlabel='Panjang gelombang (nm)', ylabel='r'); a.legend()
-    plt.tight_layout(); plt.savefig('hasil/korelogram.png', dpi=150); plt.show()
+    Y = data_l1[FRAKSI].values / data_l1[FRAKSI].sum(axis=1).values[:, None] * 100     # tepat 100%
+    A_contoh = praolah('SG-FD', R, acuan_latih)
+    terpisah = np.column_stack([PLSRegression(10).fit(A_contoh[latih], Y[latih, j]).predict(A_contoh[uji]).ravel() for j in range(3)])
+    total = terpisah.sum(axis=1)
+    print(f'Tiga model terpisah (10 komponen, ilustrasi): jumlah prediksi {total.min():.1f}-{total.max():.1f}%')
+    print('Prediksi bernilai negatif:', int((terpisah < 0).sum()))
     """),
     md("""
-    ## 6. Ukuran ketelitian
+    Jumlahnya tidak lagi tepat 100%. Pada data ini selisihnya kecil, tetapi tidak ada yang menjaminnya. Pada tanah dengan salah satu fraksi yang sangat kecil, prediksi terpisah dapat bernilai negatif atau berjumlah jauh dari 100%. Transformasi ILR menjamin keduanya (Egozcue et al., 2003). Tiga persentase diubah menjadi dua koordinat log-rasio yang bebas bernilai berapa saja:
 
-    Fungsi berikut menghitung ukuran pada Modul 7 dan Modul 8. MEC adalah bagian keragaman yang dijelaskan terhadap garis 1:1 dan bernilai negatif jika model lebih buruk daripada menebak rata-rata. RPD adalah simpangan baku dibagi RMSE. RPIQ adalah jangkauan antarkuartil dibagi RMSE.
+    - ilr₁ = √(1/2) · ln(lempung / debu)
+    - ilr₂ = √(2/3) · ln(√(lempung · debu) / pasir)
+
+    Model memprediksi kedua koordinat itu, lalu hasilnya dikembalikan menjadi persentase. Hasil kebalikan ILR selalu positif dan selalu berjumlah 100%.
+    """),
+    kode("""
+    def ke_ilr(komposisi):
+        c = komposisi / 100
+        return np.column_stack([np.sqrt(1 / 2) * np.log(c[:, 0] / c[:, 1]),
+                                np.sqrt(2 / 3) * np.log(np.sqrt(c[:, 0] * c[:, 1]) / c[:, 2])])
+
+    def dari_ilr(z):
+        z = np.asarray(z, float).reshape(-1, 2)
+        clr = np.column_stack([z[:, 0] / np.sqrt(2) + z[:, 1] / np.sqrt(6),
+                               -z[:, 0] / np.sqrt(2) + z[:, 1] / np.sqrt(6),
+                               -2 * z[:, 1] / np.sqrt(6)])
+        x = np.exp(clr - clr.max(axis=1, keepdims=True))
+        return x / x.sum(axis=1, keepdims=True) * 100
+
+    Z = ke_ilr(Y)
+    print('Kembali utuh setelah ILR dan kebalikannya:', np.allclose(dari_ilr(Z), Y))
+    pd.DataFrame(np.column_stack([Y, Z]), columns=['lempung', 'debu', 'pasir', 'ilr1', 'ilr2']).head().round(3)
+    """),
+    md("""
+    ## 8. Melatih PLSR dan *random forest* pada setiap praolah
+
+    Dua algoritme dibandingkan. **PLSR** adalah alat baku kemometrika yang meringkas ribuan kanal menjadi beberapa komponen laten (Wold et al., 2001). Jumlah komponennya dipilih dengan validasi silang 5 lipatan pada data latih. ***Random forest*** menggabungkan banyak pohon keputusan (Breiman, 2001) dan dilatih dengan pengaturan yang sama untuk semua praolah.
+
+    Untuk setiap kombinasi, dihitung dua hal. **RMSE validasi silang** dihitung hanya dari data latih, dengan 5 lipatan yang diulang 3 kali, dan dipakai untuk memilih kombinasi. **Ukuran pada data uji** dihitung per fraksi:
+
+    1. **R**, yaitu korelasi Pearson antara prediksi dan nilai laboratorium.
+    2. **R²**, yaitu bagian keragaman yang dijelaskan terhadap garis 1:1, sama dengan MEC pada Modul 8. Nilainya negatif jika model lebih buruk daripada menebak rata-rata.
+    3. **RMSE** dan **MAE**, yaitu besar galat dalam poin persen.
+    4. **nRMSE**, yaitu RMSE dibagi jangkauan nilai uji, dalam persen.
+    5. **MAPE**, yaitu rata-rata galat relatif. Nilai ini membesar pada fraksi yang kadarnya kecil seperti debu.
     """),
     kode("""
     def ukuran(y, p):
-        y, p = np.asarray(y, float), np.asarray(p, float).ravel()
-        e = p - y
-        rmse = np.sqrt(np.mean(e ** 2))
-        return {'ME': e.mean(), 'RMSE': rmse,
-                'MEC': 1 - np.sum(e ** 2) / np.sum((y - y.mean()) ** 2),
-                'R2': np.corrcoef(y, p)[0, 1] ** 2,
-                'RPD': y.std(ddof=1) / rmse,
-                'RPIQ': (np.percentile(y, 75) - np.percentile(y, 25)) / rmse}
+        rmse = np.sqrt(mean_squared_error(y, p))
+        return {'R': pearsonr(y, p)[0], 'R2': r2_score(y, p), 'RMSE': rmse, 'nRMSE%': 100 * rmse / np.ptp(y),
+                'MAE': mean_absolute_error(y, p), 'MAPE%': 100 * np.mean(np.abs((p - y) / y))}
+
+    def rmse_komposisi(y, p):
+        return np.sqrt(((y - p) ** 2).mean())
+
+    LIPATAN = RepeatedKFold(n_splits=5, n_repeats=3, random_state=0)
+
+    def rmse_cv(model, A, Zl, Yl):
+        \"\"\"RMSE komposisi dari validasi silang 5 lipatan yang diulang 3 kali, hanya pada data latih.\"\"\"
+        galat = [(dari_ilr(clone(model).fit(A[a], Zl[a]).predict(A[b])) - Yl[b]) ** 2 for a, b in LIPATAN.split(A)]
+        return np.sqrt(np.concatenate(galat).mean())
+
+    def pilih_komponen(A, Zl, Yl, kandidat=range(1, 16)):
+        \"\"\"Jumlah komponen PLSR dengan RMSE validasi silang terkecil, hanya dari data latih.\"\"\"
+        nilai = [rmse_cv(PLSRegression(k), A, Zl, Yl) for k in kandidat]
+        return kandidat[int(np.argmin(nilai))], min(nilai), nilai
+
+    def hutan():
+        return RandomForestRegressor(n_estimators=300, max_features=0.3, random_state=42, n_jobs=-1)
+
+    hasil, prediksi, ringkas, kurva_cv = [], {}, [], {}
+    for nama_p in PRAOLAH:
+        A = praolah(nama_p, R, acuan_latih)
+        k, cv_pls, kurva_cv[nama_p] = pilih_komponen(A[latih], Z[latih], Y[latih])
+        cv_rf = rmse_cv(hutan(), A[latih], Z[latih], Y[latih])
+        for nama_m, model, cv in [('PLSR', PLSRegression(k), cv_pls), ('Random forest', hutan(), cv_rf)]:
+            P = dari_ilr(model.fit(A[latih], Z[latih]).predict(A[uji]))
+            prediksi[(nama_p, nama_m)] = P
+            ringkas.append({'Praolah': nama_p, 'Algoritma': nama_m, 'Komponen PLSR': k if nama_m == 'PLSR' else np.nan, 'RMSE validasi silang': cv})
+            for j, f in enumerate(FRAKSI):
+                hasil.append({'Praolah': nama_p, 'Algoritma': nama_m, 'Fraksi': f, **ukuran(Y[uji, j], P[:, j])})
+    metrik = pd.DataFrame(hasil)
+    metrik.to_csv('hasil/metrik_per_fraksi.csv', index=False)
+    tabel = metrik.pivot_table(index=['Praolah', 'Algoritma'], columns='Fraksi', values=['R2', 'RMSE'])
+    tabel.columns = [f'{u} {f}' for u, f in tabel.columns]
+    tabel = tabel[[f'{u} {f}' for u in ['R2', 'RMSE'] for f in FRAKSI]]
+    tabel = tabel.join(pd.DataFrame(ringkas).set_index(['Praolah', 'Algoritma']))
+    tabel.loc[[(p, m) for p in PRAOLAH for m in ['PLSR', 'Random forest']]].round(2)
     """),
     md("""
-    ## 7. Cara membagi data menentukan angka yang dilaporkan
+    **Cara membaca.** Kolom R2 dan RMSE berasal dari 14 sampel uji, sedangkan kolom terakhir dari validasi silang pada data latih. Perhatikan bahwa urutan kombinasi menurut data uji tidak selalu sama dengan urutan menurut validasi silang.
 
-    Ini bagian terpenting dari notebook. Sampel dari satu profil, yaitu lapisan-lapisan pada satu titik, saling mirip. Bandingkan dua cara validasi silang pada model yang sama:
+    ## 9. Memilih kombinasi tanpa mengintip data uji
 
-    1. **Acak per sampel**, lapisan dari profil yang sama dapat masuk data latih sekaligus data uji.
-    2. **Per profil**, semua lapisan satu profil selalu berada di sisi yang sama. Inilah yang paling mendekati keadaan ketika model dipakai pada titik baru.
+    Godaannya adalah memilih kombinasi dengan R² uji tertinggi, lalu melaporkan R² itu. Cara itu curang: data uji ikut dipakai untuk memilih, sehingga angkanya tidak lagi menggambarkan sampel yang benar-benar baru. Kombinasi dipilih dari RMSE validasi silang data latih, lalu dinilai sekali pada data uji.
     """),
     kode("""
-    A = turunan(snv(R))
-    N_KOMP = 8
-    baris = []
-    for t in ['c_organik', 'clay']:
-        m = data_lab[t].notna().values
-        y = data_lab[t].values[m]
-        pls = PLSRegression(N_KOMP)
-        p1 = cross_val_predict(pls, A[m], y, cv=KFold(5, shuffle=True, random_state=1))
-        p2 = cross_val_predict(pls, A[m], y, cv=GroupKFold(5), groups=profil[m])
-        baris.append({'Sifat': t, 'Skema': '1. Acak per sampel', **ukuran(y, p1)})
-        baris.append({'Sifat': t, 'Skema': '2. Per profil', **ukuran(y, p2)})
-    bocoran = pd.DataFrame(baris).round(2)
-    bocoran.to_csv('hasil/perbandingan_skema_validasi.csv', index=False)
-    bocoran
-    """),
-    md("""
-    **Diskusi.** Skema pertama memberi angka lebih baik karena model melihat lapisan lain dari profil yang sama saat dilatih. Selisihnya tampak jelas pada lempung. Mulai sekarang semua penilaian memakai pembagian **per profil**.
+    kv = pd.DataFrame(ringkas).sort_values('RMSE validasi silang')
+    TERPILIH = tuple(kv.iloc[0][['Praolah', 'Algoritma']])
+    K_PLSR = int(kv[(kv['Praolah'] == TERPILIH[0]) & (kv['Algoritma'] == 'PLSR')]['Komponen PLSR'].iloc[0])
+    print('Kombinasi terpilih dari validasi silang:', TERPILIH, '| komponen PLSR untuk praolah ini:', K_PLSR)
+    display(kv.round(2).reset_index(drop=True))
 
-    ## 8. Memilih praolah dan jumlah komponen
-
-    Jumlah komponen laten terlalu sedikit membuat model kurang pas, terlalu banyak membuatnya hafal derau. Pilihan dibuat hanya dengan data kalibrasi. Sepertiga profil disisihkan sebagai data uji dan tidak disentuh sampai Bagian 9, mengikuti pegangan dua pertiga dan sepertiga dalam Modul 7.
-    """),
-    kode("""
-    SASARAN = 'c_organik'     # ganti dengan 'clay', 'sand', 'ph_h2o', atau 'kpk'
-    m = data_lab[SASARAN].notna().values
-    y, pr, Rm = data_lab[SASARAN].values[m], profil[m], R[m]
-
-    pisah = GroupShuffleSplit(n_splits=1, test_size=1/3, random_state=7)
-    i_kal, i_uji = next(pisah.split(Rm, groups=pr))
-    print('Kalibrasi:', len(i_kal), 'sampel dari', len(set(pr[i_kal])), 'profil')
-    print('Uji      :', len(i_uji), 'sampel dari', len(set(pr[i_uji])), 'profil')
-
-    komp = range(1, 21)
-    fig, ax = plt.subplots(figsize=(6.5, 3.4))
-    terbaik = {}
-    for nama, f in praolah.items():
-        B = f(Rm)
-        rmse = [ukuran(y[i_kal], cross_val_predict(PLSRegression(k), B[i_kal], y[i_kal], cv=GroupKFold(5), groups=pr[i_kal]))['RMSE'] for k in komp]
-        ax.plot(komp, rmse, marker='o', ms=3, label=nama)
-        terbaik[nama] = (int(np.argmin(rmse)) + 1, min(rmse))
-    ax.set(xlabel='Jumlah komponen', ylabel='RMSE validasi silang', title=SASARAN); ax.legend()
+    # kurva jumlah komponen PLSR pada praolah terpilih; garis data uji hanya untuk peragaan
+    A_t = praolah(TERPILIH[0], R, acuan_latih)
+    kurva_uji = [rmse_komposisi(Y[uji], dari_ilr(PLSRegression(k).fit(A_t[latih], Z[latih]).predict(A_t[uji]))) for k in range(1, 16)]
+    fig, ax = plt.subplots(figsize=(5.6, 3.2))
+    ax.plot(range(1, 16), kurva_cv[TERPILIH[0]], marker='o', ms=3, label='Validasi silang data latih')
+    ax.plot(range(1, 16), kurva_uji, marker='s', ms=3, ls='--', label='Data uji (hanya peragaan)')
+    ax.set(xlabel='Jumlah komponen PLSR', ylabel='RMSE komposisi (%)', title=f'PLSR, praolah {TERPILIH[0]}'); ax.legend(fontsize=7)
     plt.tight_layout(); plt.savefig('hasil/pemilihan_komponen.png', dpi=150); plt.show()
-    pd.DataFrame(terbaik, index=['komponen terbaik', 'RMSE']).T.round(3)
+    metrik[(metrik['Praolah'] == TERPILIH[0]) & (metrik['Algoritma'] == TERPILIH[1])].set_index('Fraksi').drop(columns=['Praolah', 'Algoritma']).round(2)
     """),
     md("""
-    ## 9. Model akhir dan penilaian pada profil yang belum pernah dilihat
+    Kedua garis pada gambar tidak selalu sejalan. Jika jumlah komponen dipilih dari garis data uji, angka uji akan tampak lebih baik, tetapi tidak lagi jujur, karena model sudah disesuaikan dengan 14 sampel yang seharusnya mewakili sampel baru.
+    """),
+    md("""
+    ## 10. Prediksi terhadap nilai laboratorium
 
-    Setelah satu penilaian, pembagian yang sama diulang 20 kali dengan profil uji yang berbeda. Hasilnya menunjukkan seberapa jauh satu angka dapat bergantung pada profil yang kebetulan terpilih.
+    Panel kiri sampai tengah membandingkan prediksi dengan nilai laboratorium untuk setiap fraksi. Panel kanan menempatkan setiap sampel uji pada segitiga tekstur: titik kosong adalah nilai laboratorium, titik isi adalah prediksi, dan garis menghubungkan keduanya.
     """),
     kode("""
-    nama_pilih = min(terbaik, key=lambda k: terbaik[k][1])
-    k_pilih = terbaik[nama_pilih][0]
-    f = praolah[nama_pilih]
-    print('Praolah terpilih:', nama_pilih, '| komponen:', k_pilih)
+    P = prediksi[TERPILIH]
+    nama_id = {'clay': 'Lempung', 'silt': 'Debu', 'sand': 'Pasir'}
 
-    model = PLSRegression(k_pilih).fit(f(Rm)[i_kal], y[i_kal])
-    p_uji = model.predict(f(Rm)[i_uji]).ravel()
-    u_uji = ukuran(y[i_uji], p_uji)
+    def ke_segitiga(komposisi):
+        l, p = komposisi[:, 0] / 100, komposisi[:, 2] / 100
+        return p + l / 2, l * np.sqrt(3) / 2         # pasir ke kanan, lempung ke atas, debu ke kiri
 
-    fig, ax = plt.subplots(figsize=(4.4, 4.2))
-    ax.scatter(y[i_uji], p_uji, s=14, alpha=.7)
-    b = [min(y[i_uji].min(), p_uji.min()), max(y[i_uji].max(), p_uji.max())]
-    ax.plot(b, b, 'k--', lw=.8)
-    ax.set(xlabel=f'{SASARAN} laboratorium', ylabel=f'{SASARAN} prediksi', title=f"MEC {u_uji['MEC']:.2f} | RMSE {u_uji['RMSE']:.2f} | RPD {u_uji['RPD']:.2f}")
+    fig, ax = plt.subplots(1, 4, figsize=(15, 3.6))
+    for a, (j, f) in zip(ax[:3], enumerate(FRAKSI)):
+        a.scatter(Y[uji, j], P[:, j], s=18)
+        b = [min(Y[uji, j].min(), P[:, j].min()) - 2, max(Y[uji, j].max(), P[:, j].max()) + 2]
+        a.plot(b, b, 'k--', lw=.8)
+        a.set(xlabel=f'{nama_id[f]} laboratorium (%)', ylabel=f'{nama_id[f]} prediksi (%)', title=f"R² {r2_score(Y[uji, j], P[:, j]):.2f}")
+    x0, y0 = ke_segitiga(Y[uji]); x1, y1 = ke_segitiga(P)
+    ax[3].plot([0, 1, .5, 0], [0, 0, np.sqrt(3) / 2, 0], color='k', lw=.8)
+    for i in range(len(uji)):
+        ax[3].plot([x0[i], x1[i]], [y0[i], y1[i]], color='grey', lw=.6)
+    ax[3].scatter(x0, y0, s=22, facecolors='none', edgecolors='k', label='Laboratorium')
+    ax[3].scatter(x1, y1, s=16, color='#d95f02', label='Prediksi')
+    ax[3].text(.5, np.sqrt(3) / 2 + .03, 'Lempung', ha='center'); ax[3].text(-.02, -.06, 'Debu', ha='center'); ax[3].text(1.02, -.06, 'Pasir', ha='center')
+    ax[3].set_aspect('equal'); ax[3].axis('off'); ax[3].legend(fontsize=7, loc='upper right')
+    plt.suptitle(f'{TERPILIH[1]} dengan praolah {TERPILIH[0]} pada {len(uji)} sampel uji')
     plt.tight_layout(); plt.savefig('hasil/prediksi_vs_laboratorium.png', dpi=150); plt.show()
+    print('Jumlah setiap prediksi:', np.round(P.sum(axis=1), 6).min(), '-', np.round(P.sum(axis=1), 6).max(), '%')
+    """),
+    md("""
+    ## 11. Seberapa stabil satu pembagian?
 
+    Dengan 14 sampel uji, angka di atas sangat bergantung pada sampel yang kebetulan terpilih. Sel berikut mengulang pembagian 80:20 sebanyak 20 kali dengan praolah terpilih dan pengaturan model yang sama.
+    """),
+    kode("""
     ulang = []
     for acak in range(20):
-        a, c = next(GroupShuffleSplit(n_splits=1, test_size=1/3, random_state=acak).split(Rm, groups=pr))
-        ulang.append(ukuran(y[c], PLSRegression(k_pilih).fit(f(Rm)[a], y[a]).predict(f(Rm)[c]))['MEC'])
-    print(f'MEC dari 20 pembagian: terendah {min(ulang):.2f}, median {np.median(ulang):.2f}, tertinggi {max(ulang):.2f}')
-    pd.Series(u_uji).round(3)
+        a, b = train_test_split(np.arange(len(Y)), test_size=0.2, random_state=acak)
+        Ai = praolah(TERPILIH[0], R, R[a].mean(axis=0))
+        for nama_m, model in [('PLSR', PLSRegression(K_PLSR)), ('Random forest', hutan())]:
+            Pu = dari_ilr(model.fit(Ai[a], Z[a]).predict(Ai[b]))
+            ulang += [{'Algoritma': nama_m, 'Fraksi': f, 'R2': r2_score(Y[b, j], Pu[:, j])} for j, f in enumerate(FRAKSI)]
+    ulang = pd.DataFrame(ulang)
+    fig, ax = plt.subplots(figsize=(6.4, 3))
+    data_kotak = [ulang[(ulang['Algoritma'] == m) & (ulang['Fraksi'] == f)]['R2'] for f in FRAKSI for m in ['PLSR', 'Random forest']]
+    ax.boxplot(data_kotak)
+    ax.set_xticks(range(1, 7), [f'{nama_id[f]}\\n{m}' for f in FRAKSI for m in ['PLSR', 'RF']])
+    ax.axhline(0, color='k', lw=.6); ax.set(ylabel='R² data uji', title=f'20 pembagian acak 80:20, praolah {TERPILIH[0]}')
+    plt.tight_layout(); plt.savefig('hasil/stabilitas_pembagian.png', dpi=150); plt.show()
+    ulang.groupby(['Fraksi', 'Algoritma'])['R2'].describe()[['min', '50%', 'max']].reindex(FRAKSI, level=0).round(2)
     """),
     md("""
-    ## 10. Semua sifat tanah dalam satu tabel
+    ## 12. Wilayah spektrum mana yang dipakai model?
 
-    Sifat yang memiliki fitur serapan langsung umumnya lebih mudah dikalibrasi. Hara tersedia, KTK, dan pH tidak memiliki fitur sendiri, sehingga keberhasilannya bergantung pada kovariasi setempat (Modul 7). Tabel berikut memakai validasi silang per profil pada seluruh sampel. Jumlah komponen dipilih hanya dari data latih pada setiap putaran, sehingga angkanya tidak dibuat optimistis oleh pemilihan itu. Agar cepat, spektrum diambil setiap 5 nm.
+    Kepentingan dihitung dengan permutasi per fraksi: nilai satu wilayah spektrum pada data uji diacak, lalu diukur kenaikan MAE setiap fraksi. Kanal yang bersebelahan hampir identik, sehingga mengacak satu kanal saja hampir tidak berpengaruh karena informasinya masih ada di kanal tetangganya. Karena itu yang diacak adalah **jendela 20 nm**, dengan 5 ulangan, dan satu prediksi dipakai untuk ketiga fraksi sekaligus. Perhitungan ini dibuat untuk praolah SG-FD pada kedua algoritme.
     """),
     kode("""
-    def cv_bersarang(X, y, gr, kandidat=range(1, 13)):
-        p = np.zeros(len(y))
-        for latih, uji in GroupKFold(5).split(X, groups=gr):
-            nilai = [ukuran(y[latih], cross_val_predict(PLSRegression(k), X[latih], y[latih], cv=GroupKFold(4), groups=gr[latih]))['RMSE'] for k in kandidat]
-            k = kandidat[int(np.argmin(nilai))]
-            p[uji] = PLSRegression(k).fit(X[latih], y[latih]).predict(X[uji]).ravel()
-        return p
+    LEBAR = 20
+    jendela = [(a, a + LEBAR) for a in range(400, 2500, LEBAR)]
+    indeks = [np.where((wl >= a) & (wl < b))[0] for a, b in jendela]
 
-    A5 = turunan(snv(R))[:, ::5]
-    ringkas = []
-    for t in ['c_organik', 'n_total', 'clay', 'silt', 'sand', 'ph_h2o', 'kpk', 'p_tersedia', 'k_tersedia']:
-        m = data_lab[t].notna().values
-        yt = data_lab[t].values[m]
-        ringkas.append({'Sifat': t, 'n': int(m.sum()), 'Rata-rata': yt.mean(), **ukuran(yt, cv_bersarang(A5[m], yt, profil[m]))})
-    ringkas = pd.DataFrame(ringkas).round(3)
-    ringkas.to_csv('hasil/metrik_semua_sifat.csv', index=False)
-    ringkas
+    def kepentingan_jendela(model, A_uji, Y_uji, ulang=5, seed=0):
+        rng = np.random.default_rng(seed)
+        dasar = np.abs(dari_ilr(model.predict(A_uji)) - Y_uji).mean(axis=0)
+        naik = np.zeros((len(indeks), 3))
+        for i, ii in enumerate(indeks):
+            for _ in range(ulang):
+                Ap = A_uji.copy()
+                Ap[:, ii] = A_uji[rng.permutation(len(A_uji))][:, ii]
+                naik[i] += (np.abs(dari_ilr(model.predict(Ap)) - Y_uji).mean(axis=0) - dasar) / ulang
+        return pd.DataFrame(naik, columns=FRAKSI, index=[f'{a}-{b}' for a, b in jendela])
+
+    A_fd = praolah('SG-FD', R, None)
+    k_fd = int(pd.DataFrame(ringkas).query("Praolah == 'SG-FD' and Algoritma == 'PLSR'")['Komponen PLSR'].iloc[0])
+    kepentingan = {}
+    for nama_m, model in [('PLSR', PLSRegression(k_fd)), ('Random forest', hutan())]:
+        kepentingan[nama_m] = kepentingan_jendela(model.fit(A_fd[latih], Z[latih]), A_fd[uji], Y[uji])
+
+    tengah = [a + LEBAR / 2 for a, _ in jendela]
+    fig, ax = plt.subplots(3, 2, figsize=(12, 6.4), sharex=True)
+    for c, (nama_m, imp) in enumerate(kepentingan.items()):
+        for r_, f in enumerate(FRAKSI):
+            a = ax[r_, c]
+            a.bar(tengah, imp[f], width=LEBAR * .9, color=np.where(imp[f] > 0, '#2166ac', '#b2182b'))
+            for pos in (1400, 1900, 2205):
+                a.axvline(pos, color='k', lw=.5, ls='--')
+            a.set(title=f'{nama_m}: {nama_id[f]}', ylabel='Kenaikan MAE')
+    for a in ax[-1]:
+        a.set_xlabel('Panjang gelombang (nm)')
+    plt.tight_layout(); plt.savefig('hasil/kepentingan_jendela.png', dpi=150); plt.show()
+
+    teratas = pd.concat({(m, nama_id[f]): imp[f].sort_values(ascending=False).head(10).reset_index().rename(columns={'index': 'Jendela (nm)', f: 'Kenaikan MAE'})
+                         for m, imp in kepentingan.items() for f in FRAKSI}, names=['Algoritma', 'Fraksi', 'Urutan'])
+    teratas.to_csv('hasil/kepentingan_jendela_top10.csv')
+    teratas.groupby(level=[0, 1]).head(3).round(3)
     """),
     md("""
-    ## 11. Memakai model pada spektrum baru
+    Batang biru menandai jendela yang, bila diacak, menaikkan galat, sedangkan batang merah berarti galat justru turun. Hasil dari 14 sampel uji ini masih kasar, sehingga yang patut diperhatikan adalah wilayah yang konsisten, misalnya di sekitar serapan air dan hidroksil (1.400 dan 1.900 nm) atau kaolinit (2.205 nm), bukan urutan jendela satu per satu.
 
-    Inilah yang terjadi setelah demonstrasi alat: spektrum baru diberi praolah **yang sama**, lalu dimasukkan ke model. Sembilan sampel yang tidak memiliki hasil laboratorium menjadi contoh yang pas, karena keadaannya sama dengan sampel baru. Nilai prediksinya tidak dapat diperiksa, dan galatnya kira-kira sebesar RMSE pada tabel di atas. Spektrum hasil demonstrasi dapat dimasukkan dengan cara yang sama jika sudah berupa tabel 350–2.500 nm, tetapi hasilnya hanya pendekatan, karena model belajar dari tanah GMP.
+    ## 13. Memakai model pada spektrum baru
+
+    Inilah yang terjadi setelah demonstrasi alat: spektrum baru diberi praolah **yang sama**, lalu dimasukkan ke model. Dua sampel lapisan 1 yang tidak memiliki hasil laboratorium menjadi contoh yang pas. Model akhir dilatih ulang dengan seluruh 69 sampel memakai kombinasi terpilih. Nilai prediksinya tidak dapat diperiksa, tetapi jumlahnya pasti 100%.
     """),
     kode("""
-    model_akhir = PLSRegression(k_pilih).fit(f(Rm), y)
     R_baru = tanpa_lab[kolom_spektrum].values[:, pilih]
-    prediksi_baru = pd.DataFrame({'Sampel': tanpa_lab['sampel'], f'Prediksi {SASARAN}': model_akhir.predict(f(R_baru)).ravel()}).round(2)
+    acuan_semua = R.mean(axis=0)
+    model_akhir = (PLSRegression(K_PLSR) if TERPILIH[1] == 'PLSR' else hutan()).fit(praolah(TERPILIH[0], R, acuan_semua), Z)
+    P_baru = dari_ilr(model_akhir.predict(praolah(TERPILIH[0], R_baru, acuan_semua)))
+    prediksi_baru = pd.DataFrame(P_baru, columns=['Lempung (%)', 'Debu (%)', 'Pasir (%)']).round(1)
+    prediksi_baru.insert(0, 'Sampel', tanpa_lab['sampel'])
+    prediksi_baru['Jumlah (%)'] = prediksi_baru.iloc[:, 1:].sum(axis=1).round(1)
     prediksi_baru.to_csv('hasil/prediksi_sampel_tanpa_lab.csv', index=False)
+    print(f'Seluruh notebook selesai dalam {time.time() - MULAI:.0f} detik.')
     prediksi_baru
     """),
     md("""
-    ## 12. Pengayaan: bagaimana jika hanya punya kanal Sentinel-2?
+    ## Yang dibawa ke diskusi
 
-    Spektrum dirata-ratakan ke enam kanal lebar Sentinel-2 dengan pendekatan lebar kanal persegi (bukan fungsi respons sensor yang sebenarnya). Bandingkan kedua sifat: kehilangan informasi akibat kanal lebar tidak sama pada setiap sifat. Data ini tetap merupakan pengukuran dekat di laboratorium, sehingga belum memuat gangguan atmosfer dan penutup lahan yang dihadapi citra satelit.
-    """),
-    kode("""
-    kanal = {'B02': (458, 523), 'B03': (543, 578), 'B04': (650, 680), 'B08': (785, 900), 'B11': (1565, 1655), 'B12': (2100, 2280)}
-    S2 = np.column_stack([R[:, (wl >= a) & (wl <= b)].mean(axis=1) for a, b in kanal.values()])
-    banding = []
-    for t in ['c_organik', 'clay']:
-        m = data_lab[t].notna().values
-        yt = data_lab[t].values[m]
-        banding.append({'Sifat': t, 'Data': 'Spektrum penuh', **ukuran(yt, cv_bersarang(A5[m], yt, profil[m]))})
-        banding.append({'Sifat': t, 'Data': 'Enam kanal gaya Sentinel-2', **ukuran(yt, cv_bersarang(S2[m], yt, profil[m], kandidat=range(1, 7)))})
-    pd.DataFrame(banding).round(3)
+    1. Mengapa prediksi tekstur perlu dibuat sebagai komposisi, dan apa yang terjadi bila setiap fraksi dimodelkan sendiri?
+    2. Fraksi mana yang paling mudah dan paling sulit diduga dari spektrum, dan mengapa?
+    3. Seberapa jauh satu angka R² dari 14 sampel uji dapat dipercaya, dilihat dari 20 pembagian acak?
+    4. Wilayah spektrum mana yang dipakai model, dan apakah sesuai dengan fitur serapan pada Modul 7?
     """),
 ]
 
